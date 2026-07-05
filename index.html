@@ -74,6 +74,13 @@ td.gross-pos{color:#0e7a3d;font-weight:700}
 .chip:hover{outline:2px solid var(--sky);outline-offset:1px}
 .chip:focus-visible{outline:3px solid var(--peach)}
 .chip-editing{padding:2px 6px;border:2px solid var(--sky);border-radius:6px;font:inherit;font-size:12px;font-weight:700;background:#fff}
+
+/* drag & drop */
+td.grip{width:26px;cursor:grab;color:#bbb;font-size:15px;text-align:center;user-select:none;padding:9px 4px}
+td.grip:hover{color:var(--navy)}
+tr.dragging{opacity:.35}
+tr.drop-before td{box-shadow:inset 0 3px 0 var(--sky)}
+tr.drop-after td{box-shadow:inset 0 -3px 0 var(--sky)}
 .chip-EMD{background:#E23B57;color:#fff}
 .chip-ASSIGNED{background:#e8e8e8;color:#333}
 .chip-1HO{background:#F5A623;color:#3d2800}
@@ -323,7 +330,8 @@ function render(){
                     '<td class="num">'+money(d.dispo)+'</td>'+
                     '<td class="num">'+money(d.oho)+'</td>';
       }
-      return '<tr class="'+(d.cancelled?'cancelled':'')+'">'+
+      return '<tr class="'+(d.cancelled?'cancelled':'')+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'">'+
+        '<td class="grip" draggable="true" title="Drag to move row">⠿</td>'+
         '<td><button class="chip '+chipClass(d.status)+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'" data-status="'+esc(d.status)+'" title="Click to change status">'+esc(d.status||'—')+'</button></td>'+
         '<td class="addr">'+esc(d.address)+'</td>'+
         '<td class="seller">'+esc(d.seller)+'</td>'+
@@ -342,7 +350,7 @@ function render(){
       '<div class="section-banner">'+esc(sec.name.toUpperCase())+
         '<span class="totals">'+totals+'</span></div>'+
       '<div class="table-wrap"><table><thead><tr>'+
-        '<th>Status</th><th>Property Address</th><th>Seller</th><th>Reps</th><th>Title</th>'+
+        '<th></th><th>Status</th><th>Property Address</th><th>Seller</th><th>Reps</th><th>Title</th>'+
         '<th>Notes / Last Update</th><th>Contract</th><th>UC</th><th>COE</th><th>Price</th>'+
         MONEY_COLS+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'
@@ -412,6 +420,79 @@ document.getElementById('sections').addEventListener('click', function(e){
       delete chip.dataset.editing;
     }
   });
+});
+
+/* ================= DRAG TO MOVE ROWS ================= */
+let dragInfo = null;
+const sectionsHost = document.getElementById('sections');
+
+sectionsHost.addEventListener('dragstart', function(e){
+  const grip = e.target.closest('td.grip');
+  if(!grip){ e.preventDefault(); return; }
+  const tr = grip.closest('tr');
+  dragInfo = { row: Number(tr.dataset.row), address: tr.dataset.address };
+  tr.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', tr.dataset.address); // required for Firefox
+});
+
+sectionsHost.addEventListener('dragend', function(){
+  dragInfo = null;
+  clearDropMarks();
+});
+
+function clearDropMarks(){
+  sectionsHost.querySelectorAll('.drop-before,.drop-after,.dragging').forEach(function(el){
+    el.classList.remove('drop-before','drop-after','dragging');
+  });
+}
+
+sectionsHost.addEventListener('dragover', function(e){
+  if(!dragInfo) return;
+  const tr = e.target.closest('tr[data-row]');
+  if(!tr) return;
+  e.preventDefault(); // allow drop
+  e.dataTransfer.dropEffect = 'move';
+  const rect = tr.getBoundingClientRect();
+  const before = (e.clientY - rect.top) < rect.height / 2;
+  sectionsHost.querySelectorAll('.drop-before,.drop-after').forEach(function(el){
+    if(el !== tr) el.classList.remove('drop-before','drop-after');
+  });
+  tr.classList.toggle('drop-before', before);
+  tr.classList.toggle('drop-after', !before);
+});
+
+sectionsHost.addEventListener('drop', async function(e){
+  if(!dragInfo) return;
+  const tr = e.target.closest('tr[data-row]');
+  if(!tr) return;
+  e.preventDefault();
+
+  const rect = tr.getBoundingClientRect();
+  const position = (e.clientY - rect.top) < rect.height / 2 ? 'before' : 'after';
+  const payload = {
+    token: SCRIPT_TOKEN, action: 'moveRow',
+    row: dragInfo.row, address: dragInfo.address,
+    targetRow: Number(tr.dataset.row), targetAddress: tr.dataset.address,
+    position: position
+  };
+  dragInfo = null;
+  clearDropMarks();
+
+  if(payload.row === payload.targetRow) return;
+
+  const msg = document.getElementById('status-msg');
+  msg.textContent = 'Moving row…';
+  try{
+    const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(payload) });
+    const j = await res.json();
+    if(j.error) throw new Error(j.error);
+    msg.textContent = 'Row moved ✓';
+    setTimeout(function(){ msg.textContent = ''; }, 2500);
+    loadDeals(); // row numbers shift after a move — always re-pull
+  }catch(err){
+    msg.textContent = 'Move failed: ' + err.message;
+  }
 });
 
 /* ================= ADD DEAL ================= */

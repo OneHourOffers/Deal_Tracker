@@ -70,7 +70,10 @@ td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 td.date{white-space:nowrap}
 td.gross-pos{color:#0e7a3d;font-weight:700}
 
-.chip{display:inline-block;border-radius:6px;padding:3px 10px;font-weight:800;font-size:11px;letter-spacing:.03em;white-space:nowrap}
+.chip{display:inline-block;border:none;border-radius:6px;padding:3px 10px;font-weight:800;font-size:11px;letter-spacing:.03em;white-space:nowrap;font-family:inherit;cursor:pointer}
+.chip:hover{outline:2px solid var(--sky);outline-offset:1px}
+.chip:focus-visible{outline:3px solid var(--peach)}
+.chip-editing{padding:2px 6px;border:2px solid var(--sky);border-radius:6px;font:inherit;font-size:12px;font-weight:700;background:#fff}
 .chip-EMD{background:#E23B57;color:#fff}
 .chip-ASSIGNED{background:#e8e8e8;color:#333}
 .chip-1HO{background:#F5A623;color:#3d2800}
@@ -321,7 +324,7 @@ function render(){
                     '<td class="num">'+money(d.oho)+'</td>';
       }
       return '<tr class="'+(d.cancelled?'cancelled':'')+'">'+
-        '<td><span class="chip '+chipClass(d.status)+'">'+esc(d.status||'—')+'</span></td>'+
+        '<td><button class="chip '+chipClass(d.status)+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'" data-status="'+esc(d.status)+'" title="Click to change status">'+esc(d.status||'—')+'</button></td>'+
         '<td class="addr">'+esc(d.address)+'</td>'+
         '<td class="seller">'+esc(d.seller)+'</td>'+
         '<td>'+esc(d.sr)+(d.jr?' / '+esc(d.jr):'')+'</td>'+
@@ -348,6 +351,68 @@ function render(){
 
   if(!host.innerHTML) host.innerHTML = '<div class="empty">No deals match your filters.</div>';
 }
+
+/* ================= INLINE STATUS EDIT ================= */
+const STATUS_OPTIONS = ['MARKET','EMD','ASSIGNED','NEED PICS','Price Drop','1HO','CLOSED','CANCEL'];
+
+document.getElementById('sections').addEventListener('click', function(e){
+  const chip = e.target.closest('button.chip');
+  if(!chip || chip.dataset.editing) return;
+  chip.dataset.editing = '1';
+
+  const cur = chip.dataset.status;
+  const sel = document.createElement('select');
+  sel.className = 'chip-editing';
+  const opts = STATUS_OPTIONS.includes(cur) || !cur ? STATUS_OPTIONS : [cur].concat(STATUS_OPTIONS);
+  opts.forEach(function(s){
+    const o = document.createElement('option');
+    o.value = o.textContent = s;
+    if(s === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+
+  chip.replaceWith(sel);
+  sel.focus();
+
+  let done = false;
+  function restore(){ if(!done){ done = true; sel.replaceWith(chip); delete chip.dataset.editing; } }
+
+  sel.addEventListener('blur', restore);
+  sel.addEventListener('keydown', function(ev){ if(ev.key === 'Escape') restore(); });
+  sel.addEventListener('change', async function(){
+    const newStatus = sel.value;
+    if(newStatus === cur){ restore(); return; }
+    done = true;
+    sel.disabled = true;
+    const msg = document.getElementById('status-msg');
+    msg.textContent = 'Updating status…';
+    try{
+      const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({
+        token: SCRIPT_TOKEN, action: 'updateStatus',
+        row: Number(chip.dataset.row), address: chip.dataset.address, status: newStatus
+      })});
+      const j = await res.json();
+      if(j.error) throw new Error(j.error);
+      // update local data + re-render
+      DATA.sections.forEach(function(sec){
+        sec.deals.forEach(function(d){
+          if(d.row === Number(chip.dataset.row) && d.address === chip.dataset.address){
+            d.status = newStatus;
+            d.row = j.row; // in case the row had shifted and the script re-found it
+            d.cancelled = newStatus.toUpperCase().indexOf('CANCEL') > -1;
+          }
+        });
+      });
+      msg.textContent = 'Status updated ✓';
+      setTimeout(function(){ msg.textContent = ''; }, 2500);
+      render();
+    }catch(err){
+      msg.textContent = 'Update failed: ' + err.message;
+      sel.replaceWith(chip);
+      delete chip.dataset.editing;
+    }
+  });
+});
 
 /* ================= ADD DEAL ================= */
 function openModal(){

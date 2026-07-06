@@ -376,19 +376,22 @@ const ACTIVE_COLUMNS = COLUMN_DEFS.filter(function(c){ return SHOW_MONEY || !c.m
 function textOn(bg){
   const c = bg.replace('#','');
   const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
-  return (0.299*r + 0.587*g + 0.114*b) > 150 ? '#111111' : '#ffffff';
+  return (0.299*r + 0.587*g + 0.114*b) > 128 ? '#111111' : '#ffffff';
 }
 
 let hiddenCols = {};
 try{ hiddenCols = JSON.parse(localStorage.getItem('oho_dt_hidden_cols') || '{}'); }catch(e){ hiddenCols = {}; }
 function saveHiddenCols(){ localStorage.setItem('oho_dt_hidden_cols', JSON.stringify(hiddenCols)); }
 function visibleColumns(){ return ACTIVE_COLUMNS.filter(function(c){ return !hiddenCols[c.key]; }); }
+function colLabel(c){
+  return (DATA && DATA.headers && DATA.headers[c.key]) ? DATA.headers[c.key] : c.label;
+}
 
 /* columns menu */
 function buildColsPanel(){
   const panel = document.getElementById('cols-panel');
   panel.innerHTML = ACTIVE_COLUMNS.map(function(c){
-    return '<label><input type="checkbox" data-colkey="'+c.key+'"'+(hiddenCols[c.key]?'':' checked')+'> '+esc(c.label)+'</label>';
+    return '<label><input type="checkbox" data-colkey="'+c.key+'"'+(hiddenCols[c.key]?'':' checked')+'> '+esc(colLabel(c))+'</label>';
   }).join('');
 }
 document.getElementById('cols-btn').addEventListener('click', function(e){
@@ -453,7 +456,8 @@ function render(){
         '<td class="grip" draggable="true" title="Drag to move row">⠿</td>'+
         cols.map(function(c){
           const bg = cc[c.key];
-          const style = bg ? 'background:'+bg+';color:'+textOn(bg) : '';
+          const fg = bg ? ((d.cellFonts && d.cellFonts[c.key]) || textOn(bg)) : '';
+          const style = bg ? 'background:'+bg+';color:'+fg : '';
           return td(d, c.key, c.cls, c.render(d), c.editable, style);
         }).join('')+
       '</tr>';
@@ -462,7 +466,7 @@ function render(){
     host.insertAdjacentHTML('beforeend',
       banner+
       '<div class="table-wrap"><table><thead><tr>'+
-        '<th></th>'+cols.map(function(c){ return '<th>'+esc(c.label)+'</th>'; }).join('')+
+        '<th></th>'+cols.map(function(c){ return '<th>'+esc(colLabel(c))+'</th>'; }).join('')+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'
     );
   });

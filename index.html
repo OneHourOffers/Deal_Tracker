@@ -195,8 +195,9 @@ td.editable select:focus{outline:none}
   </select>
   <select id="f-status" onchange="render()">
     <option value="">All Statuses</option>
-    <option>EMD</option><option>ASSIGNED</option><option>1HO</option><option>MARKET</option>
-    <option>NEED PICS</option><option>Price Drop</option><option>CANCEL</option>
+  </select>
+  <select id="f-section" onchange="render()">
+    <option value="">All Sections</option>
   </select>
   <div class="cols-wrap">
     <button id="cols-btn">☰ Columns</button>
@@ -304,6 +305,7 @@ async function loadDeals(){
     document.getElementById('loading').style.display='none';
     msg.textContent = '';
     populateModalFromSheet();
+    populateFilters();
     render();
   }catch(err){
     document.getElementById('loading').textContent = 'COULD NOT LOAD — check SCRIPT_URL / deployment';
@@ -449,7 +451,10 @@ function render(){
   const host = document.getElementById('sections');
   host.innerHTML = '';
 
+  const secFilter = document.getElementById('f-section').value;
+
   DATA.sections.forEach(sec=>{
+    if(secFilter && sec.name !== secFilter) return;
     const deals = sec.deals.filter(dealMatches);
     if(!deals.length) return;
 
@@ -460,7 +465,7 @@ function render(){
     let totals = '<span class="pill pill-count">'+deals.length+' deals</span>';
     if(SHOW_MONEY && grossSum) totals += '<span class="pill pill-green">'+money(grossSum)+' gross profit</span>';
 
-    const collapsed = isCollapsed(sec.name);
+    const collapsed = secFilter ? false : isCollapsed(sec.name);
     const banner = '<div class="section-banner" data-section="'+esc(sec.name)+'">'+
       '<span class="caret">'+(collapsed?'▸':'▾')+'</span>'+esc(sec.name.toUpperCase())+
       '<span class="totals">'+totals+'</span></div>';
@@ -827,6 +832,28 @@ function populateModalFromSheet(){
   if(DATA.dropdowns.TITLE){
     document.getElementById('title-list').innerHTML =
       DATA.dropdowns.TITLE.map(function(v){ return '<option>'+esc(v)+'</option>'; }).join('');
+  }
+}
+
+/* filters: statuses from the sheet's validation list, sections from the sheet's
+   dividers, reps from the Sr/Jr validation lists — all refreshed on each load */
+function refillFilter(id, blankLabel, list){
+  const sel = document.getElementById(id);
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">'+blankLabel+'</option>' +
+    list.map(function(v){ return '<option>'+esc(v)+'</option>'; }).join('');
+  for(let i = 0; i < sel.options.length; i++){
+    if(sel.options[i].value === keep){ sel.value = keep; break; }
+  }
+}
+function populateFilters(){
+  if(!DATA) return;
+  refillFilter('f-status', 'All Statuses', statusList());
+  refillFilter('f-section', 'All Sections', DATA.sections.map(function(s){ return s.name; }));
+  const reps = [].concat(sheetList('SR') || [], sheetList('JR') || []).filter(Boolean);
+  if(reps.length){
+    const uniq = reps.filter(function(v, i){ return reps.indexOf(v) === i; });
+    refillFilter('f-rep', 'All Reps', uniq);
   }
 }
 

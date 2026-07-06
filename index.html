@@ -45,6 +45,13 @@ header .spacer{flex:1}
 .filters input,.filters select{padding:9px 12px;border:2px solid var(--line);border-radius:8px;font:inherit;font-size:14px;background:#fff}
 .filters input{min-width:220px;flex:1;max-width:340px}
 .filters input:focus,.filters select:focus{outline:none;border-color:var(--sky)}
+.cols-wrap{position:relative}
+#cols-btn{padding:9px 14px;border:2px solid var(--line);border-radius:8px;font:inherit;font-size:14px;font-weight:700;background:#fff;cursor:pointer;color:var(--navy)}
+#cols-btn:hover{border-color:var(--sky)}
+#cols-panel{position:absolute;top:calc(100% + 6px);left:0;z-index:800;display:none;background:#fff;border:2px solid var(--navy);border-radius:10px;padding:10px 14px;min-width:190px;box-shadow:0 8px 24px rgba(14,62,84,.2);max-height:60vh;overflow-y:auto}
+#cols-panel.open{display:block}
+#cols-panel label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;padding:5px 0;cursor:pointer;white-space:nowrap}
+#cols-panel input{accent-color:var(--navy)}
 #status-msg{font-size:12px;font-weight:700;color:var(--teal);margin-left:auto}
 
 /* ============ SECTIONS ============ */
@@ -184,6 +191,10 @@ td.editable input:focus{outline:none}
     <option>EMD</option><option>ASSIGNED</option><option>1HO</option><option>MARKET</option>
     <option>NEED PICS</option><option>Price Drop</option><option>CANCEL</option>
   </select>
+  <div class="cols-wrap">
+    <button id="cols-btn">☰ Columns</button>
+    <div id="cols-panel"></div>
+  </div>
   <span id="status-msg"></span>
 </div>
 
@@ -330,9 +341,59 @@ function dealMatches(d){
   return true;
 }
 
-const MONEY_COLS = SHOW_MONEY
-  ? '<th>Assigned</th><th>Gross</th><th>Sr Pay</th><th>Jr Pay</th><th>DISPO</th><th>OHO</th>'
-  : '<th>Assigned</th>';
+/* ================= COLUMN SYSTEM ================= */
+function chipHtml(d){
+  return '<button class="chip '+chipClass(d.status)+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'" data-status="'+esc(d.status)+'" title="Click to change status">'+esc(d.status||'—')+'</button>';
+}
+const COLUMN_DEFS = [
+  {key:'STATUS',    label:'Status',              cls:'',            editable:false, render:function(d){return chipHtml(d);}},
+  {key:'SR',        label:'Sr. ACQ',             cls:'',            editable:false, render:function(d){return esc(d.sr);}},
+  {key:'JR',        label:'Jr. ACQ',             cls:'',            editable:false, render:function(d){return esc(d.jr);}},
+  {key:'ADDRESS',   label:'Property Address',    cls:'addr',        editable:true,  render:function(d){return esc(d.address);}},
+  {key:'SELLER',    label:'Seller',              cls:'seller',      editable:false, render:function(d){return esc(d.seller);}},
+  {key:'TITLE',     label:'Title',               cls:'',            editable:false, render:function(d){return esc(d.title);}},
+  {key:'NOTES1',    label:'Notes / Last Update', cls:'notes',       editable:false, render:function(d){return esc([d.notes1,d.notes2].filter(Boolean).join('\n'));}},
+  {key:'CONTRACT',  label:'Contract',            cls:'date',        editable:true,  render:function(d){return esc(d.contract);}},
+  {key:'DAYS_UC',   label:'UC',                  cls:'num',         editable:false, render:function(d){return esc(d.daysUC);}},
+  {key:'COE',       label:'COE',                 cls:'date',        editable:true,  render:function(d){return esc(d.coe);}},
+  {key:'PRICE',     label:'Price',               cls:'num',         editable:true,  render:function(d){return money(d.price);}},
+  {key:'ASSIGNED',  label:'Assigned',            cls:'num',         editable:true,  render:function(d){return money(d.assigned);}},
+  {key:'GROSS',     label:'Gross',               cls:'num gross-pos', money:true, editable:false, render:function(d){return money(d.gross);}},
+  {key:'SR_PAYOUT', label:'Sr Pay',              cls:'num', money:true, editable:false, render:function(d){return money(d.srPayout);}},
+  {key:'JR_PAYOUT', label:'Jr Pay',              cls:'num', money:true, editable:false, render:function(d){return money(d.jrPayout);}},
+  {key:'DISPO',     label:'DISPO',               cls:'num', money:true, editable:false, render:function(d){return money(d.dispo);}},
+  {key:'OHO',       label:'OHO',                 cls:'num', money:true, editable:false, render:function(d){return money(d.oho);}}
+];
+const ACTIVE_COLUMNS = COLUMN_DEFS.filter(function(c){ return SHOW_MONEY || !c.money; });
+
+let hiddenCols = {};
+try{ hiddenCols = JSON.parse(localStorage.getItem('oho_dt_hidden_cols') || '{}'); }catch(e){ hiddenCols = {}; }
+function saveHiddenCols(){ localStorage.setItem('oho_dt_hidden_cols', JSON.stringify(hiddenCols)); }
+function visibleColumns(){ return ACTIVE_COLUMNS.filter(function(c){ return !hiddenCols[c.key]; }); }
+
+/* columns menu */
+function buildColsPanel(){
+  const panel = document.getElementById('cols-panel');
+  panel.innerHTML = ACTIVE_COLUMNS.map(function(c){
+    return '<label><input type="checkbox" data-colkey="'+c.key+'"'+(hiddenCols[c.key]?'':' checked')+'> '+esc(c.label)+'</label>';
+  }).join('');
+}
+document.getElementById('cols-btn').addEventListener('click', function(e){
+  e.stopPropagation();
+  buildColsPanel();
+  document.getElementById('cols-panel').classList.toggle('open');
+});
+document.getElementById('cols-panel').addEventListener('change', function(e){
+  const key = e.target.dataset.colkey;
+  if(!key) return;
+  if(e.target.checked) delete hiddenCols[key]; else hiddenCols[key] = true;
+  saveHiddenCols();
+  render();
+});
+document.addEventListener('click', function(e){
+  const panel = document.getElementById('cols-panel');
+  if(panel.classList.contains('open') && !e.target.closest('.cols-wrap')) panel.classList.remove('open');
+});
 
 /* sections collapse: year sections before the current year start collapsed */
 const sectionToggles = {}; // user overrides, name -> true(collapsed)/false(open)
@@ -372,39 +433,18 @@ function render(){
 
     if(collapsed){ host.insertAdjacentHTML('beforeend', banner); return; }
 
+    const cols = visibleColumns();
     const rows = deals.map(d=>{
-      const notes = [d.notes1, d.notes2].filter(Boolean).join('\n');
-      let moneyTds = td(d,'ASSIGNED','num',money(d.assigned),true);
-      if(SHOW_MONEY){
-        moneyTds += td(d,'GROSS','num gross-pos',money(d.gross),false)+
-                    td(d,'SR_PAYOUT','num',money(d.srPayout),false)+
-                    td(d,'JR_PAYOUT','num',money(d.jrPayout),false)+
-                    td(d,'DISPO','num',money(d.dispo),false)+
-                    td(d,'OHO','num',money(d.oho),false);
-      }
       return '<tr class="'+(d.cancelled?'cancelled':'')+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'">'+
         '<td class="grip" draggable="true" title="Drag to move row">⠿</td>'+
-        td(d,'STATUS','','<button class="chip '+chipClass(d.status)+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'" data-status="'+esc(d.status)+'" title="Click to change status">'+esc(d.status||'—')+'</button>',false)+
-        td(d,'ADDRESS','addr',esc(d.address),true)+
-        td(d,'SELLER','seller',esc(d.seller),false)+
-        td(d,'SR','',esc(d.sr),false)+
-        td(d,'JR','',esc(d.jr),false)+
-        td(d,'TITLE','',esc(d.title),false)+
-        td(d,'NOTES1','notes',esc(notes),false)+
-        td(d,'CONTRACT','date',esc(d.contract),true)+
-        td(d,'DAYS_UC','num',esc(d.daysUC),false)+
-        td(d,'COE','date',esc(d.coe),true)+
-        td(d,'PRICE','num',money(d.price),true)+
-        moneyTds+
+        cols.map(function(c){ return td(d, c.key, c.cls, c.render(d), c.editable); }).join('')+
       '</tr>';
     }).join('');
 
     host.insertAdjacentHTML('beforeend',
       banner+
       '<div class="table-wrap"><table><thead><tr>'+
-        '<th></th><th>Status</th><th>Property Address</th><th>Seller</th><th>Sr. ACQ</th><th>Jr. ACQ</th><th>Title</th>'+
-        '<th>Notes / Last Update</th><th>Contract</th><th>UC</th><th>COE</th><th>Price</th>'+
-        MONEY_COLS+
+        '<th></th>'+cols.map(function(c){ return '<th>'+esc(c.label)+'</th>'; }).join('')+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'
     );
   });

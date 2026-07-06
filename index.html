@@ -66,9 +66,12 @@ main{padding:0 0 60px}
 .pill-peach{background:var(--peach);color:#4a3000}
 
 .table-wrap{overflow-x:auto;background:#fff}
-table{border-collapse:collapse;width:100%;min-width:1080px;font-size:13px}
-thead th{background:var(--navy);color:#fff;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;text-align:left;position:sticky;top:0;white-space:nowrap}
-tbody td{padding:9px 10px;border-bottom:1px solid #eee;vertical-align:top}
+table{border-collapse:collapse;width:100%;min-width:1080px;font-size:13px;table-layout:fixed}
+thead th{background:var(--navy);color:#fff;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;text-align:left;position:sticky;top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+thead th.num{text-align:right}
+thead th .rz{position:absolute;top:0;right:0;width:9px;height:100%;cursor:col-resize;user-select:none}
+thead th .rz:hover,thead th .rz.active{background:var(--sky)}
+tbody td{padding:9px 10px;border-bottom:1px solid #eee;vertical-align:top;overflow-wrap:break-word}
 tbody tr:hover{background:#f2f8fb}
 tr.cancelled td{color:#b3261e;text-decoration:line-through;background:#fdeceb}
 tr.cancelled:hover td{background:#fbdcda}
@@ -388,6 +391,13 @@ function colLabel(c){
   return (DATA && DATA.headers && DATA.headers[c.key]) ? DATA.headers[c.key] : c.label;
 }
 
+/* column widths: sensible defaults, drag-resizable, persisted per device */
+const DEFAULT_W = { STATUS:92, SR:80, JR:80, ADDRESS:200, SELLER:150, ASSIGNEE:130, TITLE:130, NOTES1:280, CONTRACT:90, DAYS_UC:56, COE:90, PRICE:100, ASSIGNED:110, GROSS:110, SR_PAYOUT:95, JR_PAYOUT:95, DISPO:85, OHO:95 };
+let colWidths = {};
+try{ colWidths = JSON.parse(localStorage.getItem('oho_dt_col_widths') || '{}'); }catch(e){ colWidths = {}; }
+function colW(key){ return colWidths[key] || DEFAULT_W[key] || 120; }
+function saveColWidths(){ localStorage.setItem('oho_dt_col_widths', JSON.stringify(colWidths)); }
+
 /* columns menu */
 function buildColsPanel(){
   const panel = document.getElementById('cols-panel');
@@ -466,8 +476,15 @@ function render(){
 
     host.insertAdjacentHTML('beforeend',
       banner+
-      '<div class="table-wrap"><table><thead><tr>'+
-        '<th></th>'+cols.map(function(c){ return '<th>'+esc(colLabel(c))+'</th>'; }).join('')+
+      '<div class="table-wrap"><table>'+
+      '<colgroup><col style="width:34px">'+
+        cols.map(function(c){ return '<col data-colkey="'+c.key+'" style="width:'+colW(c.key)+'px">'; }).join('')+
+      '</colgroup>'+
+      '<thead><tr>'+
+        '<th></th>'+cols.map(function(c){
+          const numCls = c.cls.indexOf('num') > -1 ? ' class="num"' : '';
+          return '<th'+numCls+' data-colkey="'+c.key+'">'+esc(colLabel(c))+'<span class="rz"></span></th>';
+        }).join('')+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'
     );
   });
@@ -506,6 +523,34 @@ function isoToMDY(iso){
   const p = iso.split('-');
   return parseInt(p[1])+'/'+parseInt(p[2])+'/'+p[0].slice(2);
 }
+
+/* ================= COLUMN RESIZE ================= */
+document.getElementById('sections').addEventListener('mousedown', function(e){
+  const rz = e.target.closest('.rz');
+  if(!rz) return;
+  e.preventDefault();
+  const th = rz.closest('th');
+  const key = th.dataset.colkey;
+  const startX = e.pageX;
+  const startW = colW(key);
+  rz.classList.add('active');
+
+  function onMove(ev){
+    const w = Math.max(46, startW + (ev.pageX - startX));
+    colWidths[key] = w;
+    document.querySelectorAll('col[data-colkey="'+key+'"]').forEach(function(col){
+      col.style.width = w + 'px';
+    });
+  }
+  function onUp(){
+    rz.classList.remove('active');
+    saveColWidths();
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
 
 /* ================= BANNER COLLAPSE ================= */
 document.getElementById('sections').addEventListener('click', function(e){

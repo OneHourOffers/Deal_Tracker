@@ -435,8 +435,7 @@ document.addEventListener('click', function(e){
 const sectionToggles = {}; // user overrides, name -> true(collapsed)/false(open)
 function isCollapsed(name){
   if(name in sectionToggles) return sectionToggles[name];
-  const m = name.trim().match(/^(\d{4})$/);
-  return !!(m && Number(m[1]) < new Date().getFullYear());
+  return /^\d{4}$/.test(name.trim()); // all year sections start collapsed
 }
 function noteAttrs(d, colKey){
   const n = d.cellNotes && d.cellNotes[colKey];

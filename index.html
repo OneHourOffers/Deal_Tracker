@@ -82,7 +82,7 @@ td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 td.date{white-space:nowrap}
 td.gross-pos{color:#0e7a3d;font-weight:700}
 
-.chip{display:inline-block;border:none;border-radius:6px;padding:3px 10px;font-weight:800;font-size:11px;letter-spacing:.03em;white-space:nowrap;font-family:inherit;cursor:pointer}
+.chip{display:inline-block;border:none;border-radius:6px;padding:3px 10px;font-weight:800;font-size:11px;letter-spacing:.03em;white-space:nowrap;font-family:inherit;cursor:pointer;background:#000;color:#fff}
 .chip:hover{outline:2px solid var(--sky);outline-offset:1px}
 .chip:focus-visible{outline:3px solid var(--peach)}
 .chip-editing{padding:2px 6px;border:2px solid var(--sky);border-radius:6px;font:inherit;font-size:12px;font-weight:700;background:#fff}
@@ -125,15 +125,6 @@ td.editable textarea{width:100%;min-width:220px;min-height:76px;font-family:inhe
 td.editable textarea:focus{outline:none}
 td.editable select{width:100%;min-width:90px;font-family:inherit;font-size:13px;padding:4px 6px;border:2px solid var(--sky);border-radius:5px;background:#fff;color:#000}
 td.editable select:focus{outline:none}
-.chip-EMD{background:#E23B57;color:#fff}
-.chip-ASSIGNED{background:#e8e8e8;color:#333}
-.chip-1HO{background:#F5A623;color:#3d2800}
-.chip-MARKET{background:var(--navy);color:#fff}
-.chip-NEEDPICS{background:var(--cyan);color:#063a35}
-.chip-PRICEDROP{background:var(--red);color:#fff}
-.chip-CANCEL{background:#7a1410;color:#fff}
-.chip-SOLD,.chip-CLOSED{background:var(--green);color:#052a15}
-.chip-default{background:#ddd;color:#333}
 
 .empty{padding:40px 22px;text-align:center;color:#888;font-weight:700}
 #loading{padding:60px 22px;text-align:center;font-weight:800;color:var(--navy);font-size:16px}
@@ -245,7 +236,8 @@ td.editable select:focus{outline:none}
         <select id="d-jr"><option value=""></option><option>Davon</option><option>Amanda</option><option>Steven</option></select>
       </div>
       <div class="field full"><label>Property Address</label>
-        <input id="d-address" placeholder="1234 Example St, Cleveland OH 44102">
+        <input id="d-address" list="addr-list" placeholder="1234 Example St, Cleveland OH 44102" autocomplete="off">
+        <datalist id="addr-list"></datalist>
       </div>
       <div class="field full"><label>Seller On Deed</label>
         <input id="d-seller" placeholder="Seller full name / entity">
@@ -1056,6 +1048,34 @@ async function saveDeal(){
     btn.disabled = false;
   }
 }
+
+/* ================= ADDRESS AUTOCOMPLETE (Add Deal) ================= */
+const US_STATES = {'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA','Colorado':'CO','Connecticut':'CT','Delaware':'DE','Florida':'FL','Georgia':'GA','Hawaii':'HI','Idaho':'ID','Illinois':'IL','Indiana':'IN','Iowa':'IA','Kansas':'KS','Kentucky':'KY','Louisiana':'LA','Maine':'ME','Maryland':'MD','Massachusetts':'MA','Michigan':'MI','Minnesota':'MN','Mississippi':'MS','Missouri':'MO','Montana':'MT','Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ','New Mexico':'NM','New York':'NY','North Carolina':'NC','North Dakota':'ND','Ohio':'OH','Oklahoma':'OK','Oregon':'OR','Pennsylvania':'PA','Rhode Island':'RI','South Carolina':'SC','South Dakota':'SD','Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT','Virginia':'VA','Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY','District of Columbia':'DC'};
+let addrTimer = null;
+document.getElementById('d-address').addEventListener('input', function(){
+  const q = this.value.trim();
+  clearTimeout(addrTimer);
+  if(q.length < 4) return;
+  addrTimer = setTimeout(async function(){
+    try{
+      const res = await fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=6&lang=en');
+      const j = await res.json();
+      const opts = (j.features || [])
+        .filter(function(f){ return f.properties && f.properties.countrycode === 'US'; })
+        .map(function(f){
+          const p = f.properties;
+          const street = ((p.housenumber ? p.housenumber+' ' : '') + (p.street || p.name || '')).trim();
+          const city = p.city || p.town || p.village || p.county || '';
+          const state = US_STATES[p.state] || p.state || '';
+          const tail = (state + (p.postcode ? ' ' + p.postcode : '')).trim();
+          return [street, city, tail].filter(Boolean).join(', ');
+        })
+        .filter(function(v, i, a){ return v && a.indexOf(v) === i; });
+      document.getElementById('addr-list').innerHTML =
+        opts.map(function(o){ return '<option>'+esc(o)+'</option>'; }).join('');
+    }catch(e){ /* suggestions are best-effort; typing manually always works */ }
+  }, 300);
+});
 
 /* ================= BOOT ================= */
 if(gateOK()){

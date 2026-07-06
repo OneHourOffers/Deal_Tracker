@@ -363,7 +363,7 @@ const COLUMN_DEFS = [
   {key:'COE',       label:'COE',                 cls:'date',        editable:true,  render:function(d){return esc(d.coe);}},
   {key:'PRICE',     label:'Price',               cls:'num',         editable:true,  render:function(d){return money(d.price);}},
   {key:'ASSIGNED',  label:'Assigned',            cls:'num',         editable:true,  render:function(d){return money(d.assigned);}},
-  {key:'GROSS',     label:'Gross',               cls:'num gross-pos', money:true, editable:false, render:function(d){return money(d.gross);}},
+  {key:'GROSS',     label:'Gross Profit',        cls:'num gross-pos', money:true, editable:false, render:function(d){return money(d.gross);}},
   {key:'SR_PAYOUT', label:'Sr Pay',              cls:'num', money:true, editable:false, render:function(d){return money(d.srPayout);}},
   {key:'JR_PAYOUT', label:'Jr Pay',              cls:'num', money:true, editable:false, render:function(d){return money(d.jrPayout);}},
   {key:'DISPO',     label:'DISPO',               cls:'num', money:true, editable:false, render:function(d){return money(d.dispo);}},
@@ -435,12 +435,12 @@ function render(){
     const deals = sec.deals.filter(dealMatches);
     if(!deals.length) return;
 
-    const priceSum = deals.reduce((a,d)=> a + (typeof d.price==='number'?d.price:0), 0);
-    const grossSum = deals.reduce((a,d)=> a + (typeof d.gross==='number'?d.gross:0), 0);
+    const grossSum = deals.reduce(function(a,d){
+      return a + ((!d.cancelled && typeof d.gross==='number' && isFinite(d.gross)) ? d.gross : 0);
+    }, 0);
 
-    let totals = '<span class="pill pill-count">'+deals.length+' deals</span>' +
-                 '<span class="pill pill-peach">'+money(priceSum)+' price</span>';
-    if(SHOW_MONEY && grossSum) totals += '<span class="pill pill-green">'+money(grossSum)+' gross</span>';
+    let totals = '<span class="pill pill-count">'+deals.length+' deals</span>';
+    if(SHOW_MONEY && grossSum) totals += '<span class="pill pill-green">'+money(grossSum)+' gross profit</span>';
 
     const collapsed = isCollapsed(sec.name);
     const banner = '<div class="section-banner" data-section="'+esc(sec.name)+'">'+

@@ -49,7 +49,9 @@ header .spacer{flex:1}
 
 /* ============ SECTIONS ============ */
 main{padding:0 0 60px}
-.section-banner{background:#000;color:#fff;font-weight:800;font-size:16px;letter-spacing:.03em;padding:12px 22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.section-banner{background:#000;color:#fff;font-weight:800;font-size:16px;letter-spacing:.03em;padding:12px 22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;cursor:pointer;user-select:none}
+.section-banner .caret{font-size:13px;width:14px;display:inline-block}
+.section-banner:hover{background:#1a1a1a}
 .section-banner .totals{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .pill{border-radius:6px;padding:4px 12px;font-size:13px;font-weight:800}
 .pill-count{background:#fff;color:#000}
@@ -81,6 +83,34 @@ td.grip:hover{color:var(--navy)}
 tr.dragging{opacity:.35}
 tr.drop-before td{box-shadow:inset 0 3px 0 var(--sky)}
 tr.drop-after td{box-shadow:inset 0 -3px 0 var(--sky)}
+
+/* cell notes — Sheets-style corner triangle; right-click / long-press any cell */
+td[data-colkey]{position:relative}
+td.has-note::after{content:'';position:absolute;top:0;right:0;border-style:solid;border-width:0 9px 9px 0;border-color:transparent var(--peach) transparent transparent}
+#note-pop{position:fixed;z-index:950;display:none;background:var(--cream);border:2px solid var(--navy);border-radius:10px;padding:12px;width:280px;box-shadow:0 8px 24px rgba(14,62,84,.25)}
+#note-pop.open{display:block}
+#note-pop .np-head{font-weight:800;font-size:12px;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+#note-pop textarea{width:100%;min-height:70px;font-family:inherit;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;resize:vertical;background:#fff}
+#note-pop textarea:focus{outline:none;border-color:var(--sky)}
+#note-pop .np-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+#note-pop button{border:none;border-radius:6px;font:inherit;font-weight:700;font-size:12px;padding:6px 12px;cursor:pointer}
+#note-pop .np-save{background:var(--navy);color:#fff}
+#note-pop .np-close{background:#e2ded6;color:#333}
+
+/* long-press action menu (touch devices) */
+#cell-menu{position:fixed;z-index:960;display:none;background:var(--navy);border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);gap:6px}
+#cell-menu.open{display:flex}
+#cell-menu button{border:none;border-radius:7px;background:#fff;color:var(--navy);font:inherit;font-weight:800;font-size:13px;padding:9px 16px;cursor:pointer}
+#cell-menu button:active{background:var(--sky);color:#fff}
+@media (pointer:coarse){
+  td[data-colkey]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+}
+
+/* inline cell editing */
+td.editable{cursor:text}
+td.editable:hover{background:#eaf5fb;box-shadow:inset 0 0 0 1px var(--sky)}
+td.editable input{width:100%;min-width:90px;font-family:inherit;font-size:13px;padding:4px 6px;border:2px solid var(--sky);border-radius:5px;background:#fff}
+td.editable input:focus{outline:none}
 .chip-EMD{background:#E23B57;color:#fff}
 .chip-ASSIGNED{background:#e8e8e8;color:#333}
 .chip-1HO{background:#F5A623;color:#3d2800}
@@ -304,6 +334,21 @@ const MONEY_COLS = SHOW_MONEY
   ? '<th>Assigned</th><th>Gross</th><th>Sr Pay</th><th>Jr Pay</th><th>DISPO</th><th>OHO</th>'
   : '<th>Assigned</th>';
 
+/* sections collapse: year sections before the current year start collapsed */
+const sectionToggles = {}; // user overrides, name -> true(collapsed)/false(open)
+function isCollapsed(name){
+  if(name in sectionToggles) return sectionToggles[name];
+  const m = name.trim().match(/^(\d{4})$/);
+  return !!(m && Number(m[1]) < new Date().getFullYear());
+}
+function noteAttrs(d, colKey){
+  const n = d.cellNotes && d.cellNotes[colKey];
+  return (n ? ' has-note' : '') + '" data-colkey="' + colKey + '"' + (n ? ' title="'+esc(n)+'"' : '');
+}
+function td(d, colKey, cls, inner, editable){
+  return '<td class="'+cls+(editable?' editable':'')+noteAttrs(d, colKey)+'>'+inner+'</td>';
+}
+
 function render(){
   if(!DATA) return;
   const host = document.getElementById('sections');
@@ -320,35 +365,41 @@ function render(){
                  '<span class="pill pill-peach">'+money(priceSum)+' price</span>';
     if(SHOW_MONEY && grossSum) totals += '<span class="pill pill-green">'+money(grossSum)+' gross</span>';
 
+    const collapsed = isCollapsed(sec.name);
+    const banner = '<div class="section-banner" data-section="'+esc(sec.name)+'">'+
+      '<span class="caret">'+(collapsed?'▸':'▾')+'</span>'+esc(sec.name.toUpperCase())+
+      '<span class="totals">'+totals+'</span></div>';
+
+    if(collapsed){ host.insertAdjacentHTML('beforeend', banner); return; }
+
     const rows = deals.map(d=>{
       const notes = [d.notes1, d.notes2].filter(Boolean).join('\n');
-      let moneyTds = '<td class="num">'+money(d.assigned)+'</td>';
+      let moneyTds = td(d,'ASSIGNED','num',money(d.assigned),true);
       if(SHOW_MONEY){
-        moneyTds += '<td class="num gross-pos">'+money(d.gross)+'</td>'+
-                    '<td class="num">'+money(d.srPayout)+'</td>'+
-                    '<td class="num">'+money(d.jrPayout)+'</td>'+
-                    '<td class="num">'+money(d.dispo)+'</td>'+
-                    '<td class="num">'+money(d.oho)+'</td>';
+        moneyTds += td(d,'GROSS','num gross-pos',money(d.gross),false)+
+                    td(d,'SR_PAYOUT','num',money(d.srPayout),false)+
+                    td(d,'JR_PAYOUT','num',money(d.jrPayout),false)+
+                    td(d,'DISPO','num',money(d.dispo),false)+
+                    td(d,'OHO','num',money(d.oho),false);
       }
       return '<tr class="'+(d.cancelled?'cancelled':'')+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'">'+
         '<td class="grip" draggable="true" title="Drag to move row">⠿</td>'+
-        '<td><button class="chip '+chipClass(d.status)+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'" data-status="'+esc(d.status)+'" title="Click to change status">'+esc(d.status||'—')+'</button></td>'+
-        '<td class="addr">'+esc(d.address)+'</td>'+
-        '<td class="seller">'+esc(d.seller)+'</td>'+
-        '<td>'+esc(d.sr)+(d.jr?' / '+esc(d.jr):'')+'</td>'+
-        '<td>'+esc(d.title)+'</td>'+
-        '<td class="notes">'+esc(notes)+'</td>'+
-        '<td class="date">'+esc(d.contract)+'</td>'+
-        '<td class="num">'+esc(d.daysUC)+'</td>'+
-        '<td class="date">'+esc(d.coe)+'</td>'+
-        '<td class="num">'+money(d.price)+'</td>'+
+        td(d,'STATUS','','<button class="chip '+chipClass(d.status)+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'" data-status="'+esc(d.status)+'" title="Click to change status">'+esc(d.status||'—')+'</button>',false)+
+        td(d,'ADDRESS','addr',esc(d.address),true)+
+        td(d,'SELLER','seller',esc(d.seller),false)+
+        td(d,'SR','',esc(d.sr)+(d.jr?' / '+esc(d.jr):''),false)+
+        td(d,'TITLE','',esc(d.title),false)+
+        td(d,'NOTES1','notes',esc(notes),false)+
+        td(d,'CONTRACT','date',esc(d.contract),true)+
+        td(d,'DAYS_UC','num',esc(d.daysUC),false)+
+        td(d,'COE','date',esc(d.coe),true)+
+        td(d,'PRICE','num',money(d.price),true)+
         moneyTds+
       '</tr>';
     }).join('');
 
     host.insertAdjacentHTML('beforeend',
-      '<div class="section-banner">'+esc(sec.name.toUpperCase())+
-        '<span class="totals">'+totals+'</span></div>'+
+      banner+
       '<div class="table-wrap"><table><thead><tr>'+
         '<th></th><th>Status</th><th>Property Address</th><th>Seller</th><th>Reps</th><th>Title</th>'+
         '<th>Notes / Last Update</th><th>Contract</th><th>UC</th><th>COE</th><th>Price</th>'+
@@ -359,6 +410,221 @@ function render(){
 
   if(!host.innerHTML) host.innerHTML = '<div class="empty">No deals match your filters.</div>';
 }
+
+/* ================= SHARED HELPERS ================= */
+function findDeal(row, address){
+  let hit = null;
+  DATA.sections.forEach(function(sec){
+    sec.deals.forEach(function(d){
+      if(d.row === row && d.address === address) hit = d;
+    });
+  });
+  return hit;
+}
+async function postAction(payload, busyText, okText){
+  const msg = document.getElementById('status-msg');
+  msg.textContent = busyText;
+  const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(payload) });
+  const j = await res.json();
+  if(j.error) throw new Error(j.error);
+  msg.textContent = okText;
+  setTimeout(function(){ if(msg.textContent === okText) msg.textContent = ''; }, 2500);
+  return j;
+}
+function mdyToISO(mdy){ // m/d/yy → yyyy-mm-dd for date inputs
+  const p = String(mdy||'').split('/');
+  if(p.length !== 3) return '';
+  let y = p[2].length === 2 ? '20'+p[2] : p[2];
+  return y+'-'+String(p[0]).padStart(2,'0')+'-'+String(p[1]).padStart(2,'0');
+}
+function isoToMDY(iso){
+  if(!iso) return '';
+  const p = iso.split('-');
+  return parseInt(p[1])+'/'+parseInt(p[2])+'/'+p[0].slice(2);
+}
+
+/* ================= BANNER COLLAPSE ================= */
+document.getElementById('sections').addEventListener('click', function(e){
+  const banner = e.target.closest('.section-banner');
+  if(banner){
+    const name = banner.dataset.section;
+    sectionToggles[name] = !isCollapsed(name);
+    render();
+  }
+});
+
+/* ================= INLINE CELL EDITING ================= */
+const EDIT_TYPES = { ADDRESS:'text', CONTRACT:'date', COE:'date', PRICE:'number', ASSIGNED:'number' };
+
+document.getElementById('sections').addEventListener('click', function(e){
+  const cell = e.target.closest('td.editable');
+  if(!cell || cell.dataset.editing || e.target.tagName === 'INPUT') return;
+  const tr = cell.closest('tr');
+  const deal = findDeal(Number(tr.dataset.row), tr.dataset.address);
+  if(!deal) return;
+
+  const colKey = cell.dataset.colkey;
+  const type = EDIT_TYPES[colKey];
+  const current = {
+    ADDRESS: deal.address,
+    CONTRACT: mdyToISO(deal.contract),
+    COE: mdyToISO(deal.coe),
+    PRICE: typeof deal.price === 'number' ? deal.price : '',
+    ASSIGNED: typeof deal.assigned === 'number' ? deal.assigned : ''
+  }[colKey];
+
+  cell.dataset.editing = '1';
+  const prevHTML = cell.innerHTML;
+  cell.innerHTML = '';
+  const input = document.createElement('input');
+  input.type = type;
+  input.value = current;
+  if(type === 'number'){ input.min = '0'; input.step = '500'; }
+  cell.appendChild(input);
+  input.focus();
+  if(type === 'text') input.select();
+
+  let finished = false;
+  function cancel(){
+    if(finished) return; finished = true;
+    cell.innerHTML = prevHTML; delete cell.dataset.editing;
+  }
+  async function commit(){
+    if(finished) return; finished = true;
+    const raw = input.value.trim();
+    const changed = String(raw) !== String(current);
+    if(!changed){ cell.innerHTML = prevHTML; delete cell.dataset.editing; return; }
+    input.disabled = true;
+    try{
+      const j = await postAction({
+        token: SCRIPT_TOKEN, action: 'updateCell',
+        row: deal.row, address: deal.address,
+        colKey: colKey, value: raw
+      }, 'Saving…', 'Saved ✓');
+      deal.row = j.row;
+      if(colKey === 'ADDRESS') deal.address = raw;
+      if(colKey === 'CONTRACT') deal.contract = isoToMDY(raw);
+      if(colKey === 'COE') deal.coe = isoToMDY(raw);
+      if(colKey === 'PRICE') deal.price = raw === '' ? '' : Number(raw);
+      if(colKey === 'ASSIGNED') deal.assigned = raw === '' ? '' : Number(raw);
+      render();
+    }catch(err){
+      document.getElementById('status-msg').textContent = 'Save failed: ' + err.message;
+      cell.innerHTML = prevHTML; delete cell.dataset.editing;
+    }
+  }
+  input.addEventListener('keydown', function(ev){
+    if(ev.key === 'Enter') commit();
+    if(ev.key === 'Escape') cancel();
+  });
+  input.addEventListener('blur', commit);
+});
+
+/* ================= CELL NOTES (right-click / long-press) ================= */
+document.body.insertAdjacentHTML('beforeend',
+  '<div id="note-pop"><div class="np-head">Note</div>'+
+  '<textarea placeholder="Type a note…"></textarea>'+
+  '<div class="np-actions"><button class="np-close">Close</button><button class="np-save">Save</button></div></div>');
+
+const notePop = document.getElementById('note-pop');
+let noteCtx = null; // { deal, colKey }
+
+function openNotePop(cell, x, y){
+  const tr = cell.closest('tr');
+  const deal = findDeal(Number(tr.dataset.row), tr.dataset.address);
+  if(!deal) return;
+  const colKey = cell.dataset.colkey;
+  noteCtx = { deal: deal, colKey: colKey };
+  notePop.querySelector('textarea').value = (deal.cellNotes && deal.cellNotes[colKey]) || '';
+  notePop.classList.add('open');
+  const w = 280, h = 170;
+  notePop.style.left = Math.min(x, window.innerWidth - w - 10) + 'px';
+  notePop.style.top  = Math.min(y, window.innerHeight - h - 10) + 'px';
+  notePop.querySelector('textarea').focus();
+}
+function closeNotePop(){ notePop.classList.remove('open'); noteCtx = null; }
+
+document.getElementById('sections').addEventListener('contextmenu', function(e){
+  const cell = e.target.closest('td[data-colkey]');
+  if(!cell) return;
+  e.preventDefault();
+  openNotePop(cell, e.clientX, e.clientY);
+});
+
+// long-press for touch devices → Copy / Note menu
+document.body.insertAdjacentHTML('beforeend',
+  '<div id="cell-menu"><button class="cm-copy">Copy</button><button class="cm-note">Note</button></div>');
+const cellMenu = document.getElementById('cell-menu');
+let menuCtx = null; // { cell, x, y }
+
+function openCellMenu(cell, x, y){
+  menuCtx = { cell: cell, x: x, y: y };
+  cellMenu.classList.add('open');
+  cellMenu.style.left = Math.min(x, window.innerWidth - 160) + 'px';
+  cellMenu.style.top  = Math.min(y, window.innerHeight - 60) + 'px';
+}
+function closeCellMenu(){ cellMenu.classList.remove('open'); }
+
+cellMenu.querySelector('.cm-copy').addEventListener('click', async function(){
+  if(!menuCtx) return;
+  const text = menuCtx.cell.innerText.trim();
+  try{
+    await navigator.clipboard.writeText(text);
+    document.getElementById('status-msg').textContent = 'Copied ✓';
+  }catch(err){
+    document.getElementById('status-msg').textContent = 'Copy failed';
+  }
+  setTimeout(function(){ document.getElementById('status-msg').textContent = ''; }, 2000);
+  closeCellMenu();
+});
+cellMenu.querySelector('.cm-note').addEventListener('click', function(){
+  if(!menuCtx) return;
+  const c = menuCtx;
+  closeCellMenu();
+  openNotePop(c.cell, c.x, c.y);
+});
+
+let lpTimer = null;
+document.getElementById('sections').addEventListener('touchstart', function(e){
+  const cell = e.target.closest('td[data-colkey]');
+  if(!cell) return;
+  const t = e.touches[0];
+  lpTimer = setTimeout(function(){ openCellMenu(cell, t.clientX, t.clientY); }, 500);
+}, {passive:true});
+['touchend','touchmove','touchcancel'].forEach(function(ev){
+  document.getElementById('sections').addEventListener(ev, function(){ clearTimeout(lpTimer); }, {passive:true});
+});
+document.addEventListener('touchstart', function(e){
+  if(cellMenu.classList.contains('open') && !cellMenu.contains(e.target)) closeCellMenu();
+}, {passive:true});
+
+notePop.querySelector('.np-close').addEventListener('click', closeNotePop);
+notePop.querySelector('.np-save').addEventListener('click', async function(){
+  if(!noteCtx) return;
+  const note = notePop.querySelector('textarea').value.trim();
+  const btn = notePop.querySelector('.np-save');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try{
+    const j = await postAction({
+      token: SCRIPT_TOKEN, action: 'updateNote',
+      row: noteCtx.deal.row, address: noteCtx.deal.address,
+      colKey: noteCtx.colKey, note: note
+    }, 'Saving note…', 'Note saved ✓');
+    noteCtx.deal.row = j.row;
+    if(!noteCtx.deal.cellNotes) noteCtx.deal.cellNotes = {};
+    if(note) noteCtx.deal.cellNotes[noteCtx.colKey] = note;
+    else delete noteCtx.deal.cellNotes[noteCtx.colKey];
+    closeNotePop();
+    render();
+  }catch(err){
+    document.getElementById('status-msg').textContent = 'Note save failed: ' + err.message;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+});
+document.addEventListener('click', function(e){
+  if(notePop.classList.contains('open') && !notePop.contains(e.target)) closeNotePop();
+});
 
 /* ================= INLINE STATUS EDIT ================= */
 const STATUS_OPTIONS = ['MARKET','EMD','ASSIGNED','NEED PICS','Price Drop','1HO','CLOSED','CANCEL'];

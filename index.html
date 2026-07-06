@@ -355,7 +355,8 @@ const COLUMN_DEFS = [
   {key:'SR',        label:'Sr. ACQ',             cls:'',            editable:true,  render:function(d){return esc(d.sr);}},
   {key:'JR',        label:'Jr. ACQ',             cls:'',            editable:true,  render:function(d){return esc(d.jr);}},
   {key:'ADDRESS',   label:'Property Address',    cls:'addr',        editable:true,  render:function(d){return esc(d.address);}},
-  {key:'SELLER',    label:'Seller',              cls:'seller',      editable:true,  render:function(d){return esc(d.seller);}},
+  {key:'SELLER',    label:'Seller On Deed',      cls:'seller',      editable:true,  render:function(d){return esc(d.seller);}},
+  {key:'ASSIGNEE',  label:'Assignee LLC',        cls:'',            editable:true,  render:function(d){return esc(d.assignee);}},
   {key:'TITLE',     label:'Title',               cls:'',            editable:true,  render:function(d){return esc(d.title);}},
   {key:'NOTES1',    label:'Last Updates',        cls:'notes',       editable:true,  render:function(d){return esc([d.notes1,d.notes2].filter(Boolean).join('\n'));}},
   {key:'CONTRACT',  label:'Contract',            cls:'date',        editable:true,  render:function(d){return esc(d.contract);}},
@@ -517,13 +518,14 @@ document.getElementById('sections').addEventListener('click', function(e){
 });
 
 /* ================= INLINE CELL EDITING ================= */
-const EDIT_TYPES = { ADDRESS:'text', SELLER:'text', SR:'text', JR:'text', TITLE:'text', NOTES1:'textarea', CONTRACT:'date', COE:'date', PRICE:'number', ASSIGNED:'number' };
+const EDIT_TYPES = { ADDRESS:'text', SELLER:'text', SR:'text', JR:'text', ASSIGNEE:'text', TITLE:'text', NOTES1:'textarea', CONTRACT:'date', COE:'date', PRICE:'number', ASSIGNED:'number' };
 function cellValue(deal, colKey){
   switch(colKey){
     case 'ADDRESS':  return deal.address;
     case 'SELLER':   return deal.seller;
     case 'SR':       return deal.sr;
     case 'JR':       return deal.jr;
+    case 'ASSIGNEE': return deal.assignee;
     case 'TITLE':    return deal.title;
     case 'NOTES1':   return deal.notes1;
     case 'CONTRACT': return mdyToISO(deal.contract);
@@ -596,6 +598,7 @@ document.getElementById('sections').addEventListener('click', function(e){
       if(colKey === 'SELLER') deal.seller = raw;
       if(colKey === 'SR') deal.sr = raw;
       if(colKey === 'JR') deal.jr = raw;
+      if(colKey === 'ASSIGNEE') deal.assignee = raw;
       if(colKey === 'TITLE') deal.title = raw;
       if(colKey === 'NOTES1') deal.notes1 = raw;
       if(colKey === 'CONTRACT') deal.contract = isoToMDY(raw);

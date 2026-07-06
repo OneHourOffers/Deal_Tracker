@@ -118,6 +118,10 @@ td.editable{cursor:text}
 td.editable:hover{background:#eaf5fb;box-shadow:inset 0 0 0 1px var(--sky)}
 td.editable input{width:100%;min-width:90px;font-family:inherit;font-size:13px;padding:4px 6px;border:2px solid var(--sky);border-radius:5px;background:#fff}
 td.editable input:focus{outline:none}
+td.editable textarea{width:100%;min-width:220px;min-height:76px;font-family:inherit;font-size:12px;padding:5px 7px;border:2px solid var(--sky);border-radius:5px;background:#fff;resize:vertical;color:#000}
+td.editable textarea:focus{outline:none}
+td.editable select{width:100%;min-width:90px;font-family:inherit;font-size:13px;padding:4px 6px;border:2px solid var(--sky);border-radius:5px;background:#fff;color:#000}
+td.editable select:focus{outline:none}
 .chip-EMD{background:#E23B57;color:#fff}
 .chip-ASSIGNED{background:#e8e8e8;color:#333}
 .chip-1HO{background:#F5A623;color:#3d2800}
@@ -296,6 +300,7 @@ async function loadDeals(){
     document.getElementById('last-updated').textContent = 'Updated ' + j.updated;
     document.getElementById('loading').style.display='none';
     msg.textContent = '';
+    populateModalFromSheet();
     render();
   }catch(err){
     document.getElementById('loading').textContent = 'COULD NOT LOAD — check SCRIPT_URL / deployment';
@@ -320,7 +325,7 @@ function chipClass(status){
   if(s.includes('PIC')) return 'chip-NEEDPICS';
   if(s.includes('PRICE')) return 'chip-PRICEDROP';
   if(s.includes('CANCEL')) return 'chip-CANCEL';
-  if(s.includes('SOLD')||s.includes('CLOSED')) return 'chip-SOLD';
+  if(s.includes('SOLD')||s.includes('CLOSED')||s.includes('CTC')) return 'chip-SOLD';
   return 'chip-default';
 }
 
@@ -347,12 +352,12 @@ function chipHtml(d){
 }
 const COLUMN_DEFS = [
   {key:'STATUS',    label:'Status',              cls:'',            editable:false, render:function(d){return chipHtml(d);}},
-  {key:'SR',        label:'Sr. ACQ',             cls:'',            editable:false, render:function(d){return esc(d.sr);}},
-  {key:'JR',        label:'Jr. ACQ',             cls:'',            editable:false, render:function(d){return esc(d.jr);}},
+  {key:'SR',        label:'Sr. ACQ',             cls:'',            editable:true,  render:function(d){return esc(d.sr);}},
+  {key:'JR',        label:'Jr. ACQ',             cls:'',            editable:true,  render:function(d){return esc(d.jr);}},
   {key:'ADDRESS',   label:'Property Address',    cls:'addr',        editable:true,  render:function(d){return esc(d.address);}},
-  {key:'SELLER',    label:'Seller',              cls:'seller',      editable:false, render:function(d){return esc(d.seller);}},
-  {key:'TITLE',     label:'Title',               cls:'',            editable:false, render:function(d){return esc(d.title);}},
-  {key:'NOTES1',    label:'Notes / Last Update', cls:'notes',       editable:false, render:function(d){return esc([d.notes1,d.notes2].filter(Boolean).join('\n'));}},
+  {key:'SELLER',    label:'Seller',              cls:'seller',      editable:true,  render:function(d){return esc(d.seller);}},
+  {key:'TITLE',     label:'Title',               cls:'',            editable:true,  render:function(d){return esc(d.title);}},
+  {key:'NOTES1',    label:'Last Updates',        cls:'notes',       editable:true,  render:function(d){return esc([d.notes1,d.notes2].filter(Boolean).join('\n'));}},
   {key:'CONTRACT',  label:'Contract',            cls:'date',        editable:true,  render:function(d){return esc(d.contract);}},
   {key:'DAYS_UC',   label:'UC',                  cls:'num',         editable:false, render:function(d){return esc(d.daysUC);}},
   {key:'COE',       label:'COE',                 cls:'date',        editable:true,  render:function(d){return esc(d.coe);}},
@@ -365,6 +370,14 @@ const COLUMN_DEFS = [
   {key:'OHO',       label:'OHO',                 cls:'num', money:true, editable:false, render:function(d){return money(d.oho);}}
 ];
 const ACTIVE_COLUMNS = COLUMN_DEFS.filter(function(c){ return SHOW_MONEY || !c.money; });
+
+/* cell colors come from the sheet (conditional formatting rules + manual fills);
+   text color auto-picks black/white by background luminance */
+function textOn(bg){
+  const c = bg.replace('#','');
+  const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+  return (0.299*r + 0.587*g + 0.114*b) > 150 ? '#111111' : '#ffffff';
+}
 
 let hiddenCols = {};
 try{ hiddenCols = JSON.parse(localStorage.getItem('oho_dt_hidden_cols') || '{}'); }catch(e){ hiddenCols = {}; }
@@ -406,8 +419,8 @@ function noteAttrs(d, colKey){
   const n = d.cellNotes && d.cellNotes[colKey];
   return (n ? ' has-note' : '') + '" data-colkey="' + colKey + '"' + (n ? ' title="'+esc(n)+'"' : '');
 }
-function td(d, colKey, cls, inner, editable){
-  return '<td class="'+cls+(editable?' editable':'')+noteAttrs(d, colKey)+'>'+inner+'</td>';
+function td(d, colKey, cls, inner, editable, style){
+  return '<td class="'+cls+(editable?' editable':'')+noteAttrs(d, colKey)+(style?' style="'+style+'"':'')+'>'+inner+'</td>';
 }
 
 function render(){
@@ -435,9 +448,14 @@ function render(){
 
     const cols = visibleColumns();
     const rows = deals.map(d=>{
+      const cc = d.cellColors || {};
       return '<tr class="'+(d.cancelled?'cancelled':'')+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'">'+
         '<td class="grip" draggable="true" title="Drag to move row">⠿</td>'+
-        cols.map(function(c){ return td(d, c.key, c.cls, c.render(d), c.editable); }).join('')+
+        cols.map(function(c){
+          const bg = cc[c.key];
+          const style = bg ? 'background:'+bg+';color:'+textOn(bg) : '';
+          return td(d, c.key, c.cls, c.render(d), c.editable, style);
+        }).join('')+
       '</tr>';
     }).join('');
 
@@ -495,35 +513,62 @@ document.getElementById('sections').addEventListener('click', function(e){
 });
 
 /* ================= INLINE CELL EDITING ================= */
-const EDIT_TYPES = { ADDRESS:'text', CONTRACT:'date', COE:'date', PRICE:'number', ASSIGNED:'number' };
+const EDIT_TYPES = { ADDRESS:'text', SELLER:'text', SR:'text', JR:'text', TITLE:'text', NOTES1:'textarea', CONTRACT:'date', COE:'date', PRICE:'number', ASSIGNED:'number' };
+function cellValue(deal, colKey){
+  switch(colKey){
+    case 'ADDRESS':  return deal.address;
+    case 'SELLER':   return deal.seller;
+    case 'SR':       return deal.sr;
+    case 'JR':       return deal.jr;
+    case 'TITLE':    return deal.title;
+    case 'NOTES1':   return deal.notes1;
+    case 'CONTRACT': return mdyToISO(deal.contract);
+    case 'COE':      return mdyToISO(deal.coe);
+    case 'PRICE':    return typeof deal.price === 'number' ? deal.price : '';
+    case 'ASSIGNED': return typeof deal.assigned === 'number' ? deal.assigned : '';
+  }
+  return '';
+}
 
 document.getElementById('sections').addEventListener('click', function(e){
   const cell = e.target.closest('td.editable');
-  if(!cell || cell.dataset.editing || e.target.tagName === 'INPUT') return;
+  if(!cell || cell.dataset.editing || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   const tr = cell.closest('tr');
   const deal = findDeal(Number(tr.dataset.row), tr.dataset.address);
   if(!deal) return;
 
   const colKey = cell.dataset.colkey;
   const type = EDIT_TYPES[colKey];
-  const current = {
-    ADDRESS: deal.address,
-    CONTRACT: mdyToISO(deal.contract),
-    COE: mdyToISO(deal.coe),
-    PRICE: typeof deal.price === 'number' ? deal.price : '',
-    ASSIGNED: typeof deal.assigned === 'number' ? deal.assigned : ''
-  }[colKey];
+  const current = cellValue(deal, colKey);
 
   cell.dataset.editing = '1';
   const prevHTML = cell.innerHTML;
   cell.innerHTML = '';
-  const input = document.createElement('input');
-  input.type = type;
-  input.value = current;
-  if(type === 'number'){ input.min = '0'; input.step = '500'; }
+  let input;
+  const list = type === 'text' ? sheetList(colKey) : null;
+  if(list){
+    input = document.createElement('select');
+    const opts = [''].concat(list);
+    if(current && opts.indexOf(current) === -1) opts.push(current);
+    opts.forEach(function(v){
+      const o = document.createElement('option');
+      o.value = o.textContent = v;
+      if(v === current) o.selected = true;
+      input.appendChild(o);
+    });
+  } else if(type === 'textarea'){
+    input = document.createElement('textarea');
+    input.rows = 4;
+    input.value = current;
+  } else {
+    input = document.createElement('input');
+    input.type = type;
+    if(type === 'number'){ input.min = '0'; input.step = '500'; }
+    input.value = current;
+  }
   cell.appendChild(input);
   input.focus();
-  if(type === 'text') input.select();
+  if(type === 'text' && !list) input.select();
 
   let finished = false;
   function cancel(){
@@ -544,6 +589,11 @@ document.getElementById('sections').addEventListener('click', function(e){
       }, 'Saving…', 'Saved ✓');
       deal.row = j.row;
       if(colKey === 'ADDRESS') deal.address = raw;
+      if(colKey === 'SELLER') deal.seller = raw;
+      if(colKey === 'SR') deal.sr = raw;
+      if(colKey === 'JR') deal.jr = raw;
+      if(colKey === 'TITLE') deal.title = raw;
+      if(colKey === 'NOTES1') deal.notes1 = raw;
       if(colKey === 'CONTRACT') deal.contract = isoToMDY(raw);
       if(colKey === 'COE') deal.coe = isoToMDY(raw);
       if(colKey === 'PRICE') deal.price = raw === '' ? '' : Number(raw);
@@ -555,10 +605,17 @@ document.getElementById('sections').addEventListener('click', function(e){
     }
   }
   input.addEventListener('keydown', function(ev){
-    if(ev.key === 'Enter') commit();
+    if(ev.key === 'Enter'){
+      if(type === 'textarea'){
+        if(ev.metaKey || ev.ctrlKey) commit(); // plain Enter = newline in notes
+      } else {
+        commit();
+      }
+    }
     if(ev.key === 'Escape') cancel();
   });
   input.addEventListener('blur', commit);
+  if(list) input.addEventListener('change', commit);
 });
 
 /* ================= CELL NOTES (right-click / long-press) ================= */
@@ -668,7 +725,37 @@ document.addEventListener('click', function(e){
 });
 
 /* ================= INLINE STATUS EDIT ================= */
-const STATUS_OPTIONS = ['MARKET','EMD','ASSIGNED','NEED PICS','Price Drop','1HO','CLOSED','CANCEL'];
+const STATUS_OPTIONS = ['MARKET','EMD','ASSIGNED','NEED PICS','Price Drop','1HO','CTC','CLOSED','CANCEL'];
+function statusList(){
+  return (DATA && DATA.dropdowns && DATA.dropdowns.STATUS && DATA.dropdowns.STATUS.length)
+    ? DATA.dropdowns.STATUS : STATUS_OPTIONS;
+}
+function sheetList(colKey){
+  return (DATA && DATA.dropdowns && DATA.dropdowns[colKey] && DATA.dropdowns[colKey].length)
+    ? DATA.dropdowns[colKey] : null;
+}
+
+/* populate the Add Deal modal selects from the sheet's validation lists */
+function fillSelect(id, list, keepBlank){
+  if(!list) return;
+  const sel = document.getElementById(id);
+  const prev = sel.value;
+  sel.innerHTML = (keepBlank ? '<option value=""></option>' : '') +
+    list.map(function(v){ return '<option>'+esc(v)+'</option>'; }).join('');
+  if(list.indexOf(prev) > -1 || (keepBlank && prev === '')) sel.value = prev;
+}
+function populateModalFromSheet(){
+  if(!DATA || !DATA.dropdowns) return;
+  fillSelect('d-status', DATA.dropdowns.STATUS, false);
+  fillSelect('d-source', DATA.dropdowns.LEAD_SOURCE, false);
+  fillSelect('d-type',   DATA.dropdowns.DEAL_TYPE, false);
+  fillSelect('d-sr',     DATA.dropdowns.SR, true);
+  fillSelect('d-jr',     DATA.dropdowns.JR, true);
+  if(DATA.dropdowns.TITLE){
+    document.getElementById('title-list').innerHTML =
+      DATA.dropdowns.TITLE.map(function(v){ return '<option>'+esc(v)+'</option>'; }).join('');
+  }
+}
 
 document.getElementById('sections').addEventListener('click', function(e){
   const chip = e.target.closest('button.chip');
@@ -678,7 +765,8 @@ document.getElementById('sections').addEventListener('click', function(e){
   const cur = chip.dataset.status;
   const sel = document.createElement('select');
   sel.className = 'chip-editing';
-  const opts = STATUS_OPTIONS.includes(cur) || !cur ? STATUS_OPTIONS : [cur].concat(STATUS_OPTIONS);
+  const base = statusList();
+  const opts = base.includes(cur) || !cur ? base : [cur].concat(base);
   opts.forEach(function(s){
     const o = document.createElement('option');
     o.value = o.textContent = s;

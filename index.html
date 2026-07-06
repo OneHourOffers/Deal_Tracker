@@ -354,24 +354,31 @@ function chipHtml(d){
   return '<button class="chip '+chipClass(d.status)+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'" data-status="'+esc(d.status)+'" title="Click to change status">'+esc(d.status||'—')+'</button>';
 }
 const COLUMN_DEFS = [
-  {key:'STATUS',    label:'Status',              cls:'',            editable:false, render:function(d){return chipHtml(d);}},
-  {key:'SR',        label:'Sr. ACQ',             cls:'',            editable:true,  render:function(d){return esc(d.sr);}},
-  {key:'JR',        label:'Jr. ACQ',             cls:'',            editable:true,  render:function(d){return esc(d.jr);}},
-  {key:'ADDRESS',   label:'Property Address',    cls:'addr',        editable:true,  render:function(d){return esc(d.address);}},
-  {key:'SELLER',    label:'Seller On Deed',      cls:'seller',      editable:true,  render:function(d){return esc(d.seller);}},
-  {key:'ASSIGNEE',  label:'Assignee LLC',        cls:'',            editable:true,  render:function(d){return esc(d.assignee);}},
-  {key:'TITLE',     label:'Title',               cls:'',            editable:true,  render:function(d){return esc(d.title);}},
-  {key:'NOTES1',    label:'Last Updates',        cls:'notes',       editable:true,  render:function(d){return esc([d.notes1,d.notes2].filter(Boolean).join('\n'));}},
-  {key:'CONTRACT',  label:'Contract',            cls:'date',        editable:true,  render:function(d){return esc(d.contract);}},
-  {key:'DAYS_UC',   label:'UC',                  cls:'num',         editable:false, render:function(d){return esc(d.daysUC);}},
-  {key:'COE',       label:'COE',                 cls:'date',        editable:true,  render:function(d){return esc(d.coe);}},
-  {key:'PRICE',     label:'Price',               cls:'num',         editable:true,  render:function(d){return money(d.price);}},
-  {key:'ASSIGNED',  label:'Assigned',            cls:'num',         editable:true,  render:function(d){return money(d.assigned);}},
-  {key:'GROSS',     label:'Gross Profit',        cls:'num gross-pos', money:true, editable:false, render:function(d){return money(d.gross);}},
-  {key:'SR_PAYOUT', label:'Sr Pay',              cls:'num', money:true, editable:false, render:function(d){return money(d.srPayout);}},
-  {key:'JR_PAYOUT', label:'Jr Pay',              cls:'num', money:true, editable:false, render:function(d){return money(d.jrPayout);}},
-  {key:'DISPO',     label:'DISPO',               cls:'num', money:true, editable:false, render:function(d){return money(d.dispo);}},
-  {key:'OHO',       label:'OHO',                 cls:'num', money:true, editable:false, render:function(d){return money(d.oho);}}
+  {key:'STATUS',      label:'Status',            cls:'',       editable:false, render:function(d){return chipHtml(d);}},
+  {key:'LEAD_SOURCE', label:'Lead Source',       cls:'',       editable:true,  render:function(d){return esc(d.leadSource);}},
+  {key:'DEAL_TYPE',   label:'Deal Type',         cls:'',       editable:true,  render:function(d){return esc(d.dealType);}},
+  {key:'SR',          label:'Sr. ACQ',           cls:'',       editable:true,  render:function(d){return esc(d.sr);}},
+  {key:'JR',          label:'Jr. Acq',           cls:'',       editable:true,  render:function(d){return esc(d.jr);}},
+  {key:'SELLER',      label:'Seller On Deed',    cls:'seller', editable:true,  render:function(d){return esc(d.seller);}},
+  {key:'ADDRESS',     label:'Property Address',  cls:'addr',   editable:true,  render:function(d){return esc(d.address);}},
+  {key:'ASSIGNEE',    label:'Assignee LLC',      cls:'',       editable:true,  render:function(d){return esc(d.assignee);}},
+  {key:'TITLE',       label:'Title',             cls:'',       editable:true,  render:function(d){return esc(d.title);}},
+  {key:'NOTES1',      label:'Last Major Update', cls:'notes',  editable:true,  render:function(d){return esc([d.notes1,d.notes2].filter(Boolean).join('\n'));}},
+  {key:'LEAD_DATE',   label:'Lead Date',         cls:'date',   editable:true,  render:function(d){return esc(d.leadDate);}},
+  {key:'CONTRACT',    label:'Contract Signed',   cls:'date',   editable:true,  render:function(d){return esc(d.contract);}},
+  {key:'DAYS_UC',     label:'Days UC',           cls:'num',    editable:false, render:function(d){return esc(d.daysUC);}},
+  {key:'COE',         label:'COE',               cls:'date',   editable:true,  render:function(d){return esc(d.coe);}},
+  {key:'SOLD',        label:'Sold',              cls:'date',   editable:true,  render:function(d){return esc(d.sold);}},
+  {key:'TITLE_REPORT',label:'Title Report',      cls:'',       editable:true,  render:function(d){return esc(d.titleReport);}},
+  {key:'CLEAR_TITLE', label:'Clear Title',       cls:'',       editable:true,  render:function(d){return esc(d.clearTitle);}},
+  {key:'HUD',         label:'HUD',               cls:'',       editable:true,  render:function(d){return esc(d.hud);}},
+  {key:'PRICE',       label:'UC Price',          cls:'num',    editable:true,  render:function(d){return money(d.price);}},
+  {key:'ASSIGNED',    label:'Assigned Price',    cls:'num',    editable:true,  render:function(d){return money(d.assigned);}},
+  {key:'GROSS',       label:'Gross Profit',      cls:'num gross-pos', money:true, editable:false, render:function(d){return money(d.gross);}},
+  {key:'SR_PAYOUT',   label:'Sr. Payout',        cls:'num', money:true, editable:false, render:function(d){return money(d.srPayout);}},
+  {key:'JR_PAYOUT',   label:'Jr. Payout',        cls:'num', money:true, editable:false, render:function(d){return money(d.jrPayout);}},
+  {key:'DISPO',       label:'DISPO',             cls:'num', money:true, editable:false, render:function(d){return money(d.dispo);}},
+  {key:'OHO',         label:'OHO',               cls:'num', money:true, editable:false, render:function(d){return money(d.oho);}}
 ];
 const ACTIVE_COLUMNS = COLUMN_DEFS.filter(function(c){ return SHOW_MONEY || !c.money; });
 
@@ -392,7 +399,7 @@ function colLabel(c){
 }
 
 /* column widths: sensible defaults, drag-resizable, persisted per device */
-const DEFAULT_W = { STATUS:92, SR:80, JR:80, ADDRESS:200, SELLER:150, ASSIGNEE:130, TITLE:130, NOTES1:280, CONTRACT:90, DAYS_UC:56, COE:90, PRICE:100, ASSIGNED:110, GROSS:110, SR_PAYOUT:95, JR_PAYOUT:95, DISPO:85, OHO:95 };
+const DEFAULT_W = { STATUS:92, LEAD_SOURCE:100, DEAL_TYPE:80, SR:80, JR:80, SELLER:150, ADDRESS:200, ASSIGNEE:130, TITLE:130, NOTES1:280, LEAD_DATE:90, CONTRACT:95, DAYS_UC:64, COE:90, SOLD:90, TITLE_REPORT:80, CLEAR_TITLE:80, HUD:60, PRICE:100, ASSIGNED:110, GROSS:110, SR_PAYOUT:95, JR_PAYOUT:95, DISPO:85, OHO:95 };
 let colWidths = {};
 try{ colWidths = JSON.parse(localStorage.getItem('oho_dt_col_widths') || '{}'); }catch(e){ colWidths = {}; }
 function colW(key){ return colWidths[key] || DEFAULT_W[key] || 120; }
@@ -563,10 +570,17 @@ document.getElementById('sections').addEventListener('click', function(e){
 });
 
 /* ================= INLINE CELL EDITING ================= */
-const EDIT_TYPES = { ADDRESS:'text', SELLER:'text', SR:'text', JR:'text', ASSIGNEE:'text', TITLE:'text', NOTES1:'textarea', CONTRACT:'date', COE:'date', PRICE:'number', ASSIGNED:'number' };
+const EDIT_TYPES = { LEAD_SOURCE:'text', DEAL_TYPE:'text', SR:'text', JR:'text', SELLER:'text', ADDRESS:'text', ASSIGNEE:'text', TITLE:'text', NOTES1:'textarea', LEAD_DATE:'date', CONTRACT:'date', COE:'date', SOLD:'date', TITLE_REPORT:'text', CLEAR_TITLE:'text', HUD:'text', PRICE:'number', ASSIGNED:'number' };
 function cellValue(deal, colKey){
   switch(colKey){
     case 'ADDRESS':  return deal.address;
+    case 'LEAD_SOURCE': return deal.leadSource;
+    case 'DEAL_TYPE':   return deal.dealType;
+    case 'LEAD_DATE':   return mdyToISO(deal.leadDate);
+    case 'SOLD':        return mdyToISO(deal.sold);
+    case 'TITLE_REPORT':return deal.titleReport;
+    case 'CLEAR_TITLE': return deal.clearTitle;
+    case 'HUD':         return deal.hud;
     case 'SELLER':   return deal.seller;
     case 'SR':       return deal.sr;
     case 'JR':       return deal.jr;
@@ -640,6 +654,13 @@ document.getElementById('sections').addEventListener('click', function(e){
       }, 'Saving…', 'Saved ✓');
       deal.row = j.row;
       if(colKey === 'ADDRESS') deal.address = raw;
+      if(colKey === 'LEAD_SOURCE') deal.leadSource = raw;
+      if(colKey === 'DEAL_TYPE') deal.dealType = raw;
+      if(colKey === 'LEAD_DATE') deal.leadDate = isoToMDY(raw);
+      if(colKey === 'SOLD') deal.sold = isoToMDY(raw);
+      if(colKey === 'TITLE_REPORT') deal.titleReport = raw;
+      if(colKey === 'CLEAR_TITLE') deal.clearTitle = raw;
+      if(colKey === 'HUD') deal.hud = raw;
       if(colKey === 'SELLER') deal.seller = raw;
       if(colKey === 'SR') deal.sr = raw;
       if(colKey === 'JR') deal.jr = raw;

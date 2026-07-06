@@ -387,7 +387,8 @@ function render(){
         td(d,'STATUS','','<button class="chip '+chipClass(d.status)+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'" data-status="'+esc(d.status)+'" title="Click to change status">'+esc(d.status||'—')+'</button>',false)+
         td(d,'ADDRESS','addr',esc(d.address),true)+
         td(d,'SELLER','seller',esc(d.seller),false)+
-        td(d,'SR','',esc(d.sr)+(d.jr?' / '+esc(d.jr):''),false)+
+        td(d,'SR','',esc(d.sr),false)+
+        td(d,'JR','',esc(d.jr),false)+
         td(d,'TITLE','',esc(d.title),false)+
         td(d,'NOTES1','notes',esc(notes),false)+
         td(d,'CONTRACT','date',esc(d.contract),true)+
@@ -401,7 +402,7 @@ function render(){
     host.insertAdjacentHTML('beforeend',
       banner+
       '<div class="table-wrap"><table><thead><tr>'+
-        '<th></th><th>Status</th><th>Property Address</th><th>Seller</th><th>Reps</th><th>Title</th>'+
+        '<th></th><th>Status</th><th>Property Address</th><th>Seller</th><th>Sr. ACQ</th><th>Jr. ACQ</th><th>Title</th>'+
         '<th>Notes / Last Update</th><th>Contract</th><th>UC</th><th>COE</th><th>Price</th>'+
         MONEY_COLS+
       '</tr></thead><tbody>'+rows+'</tbody></table></div>'

@@ -36,7 +36,6 @@ header .sub{font-size:12px;opacity:.75}
 header .spacer{flex:1}
 .btn{border:none;border-radius:8px;padding:10px 18px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;transition:transform .06s}
 .btn:active{transform:scale(.97)}
-.btn-add{background:var(--green);color:#06281a}
 .btn-refresh{background:var(--sky);color:#082635}
 .btn:focus-visible{outline:3px solid var(--peach)}
 
@@ -87,12 +86,6 @@ td.gross-pos{color:#0e7a3d;font-weight:700}
 .chip:focus-visible{outline:3px solid var(--peach)}
 .chip-editing{padding:2px 6px;border:2px solid var(--sky);border-radius:6px;font:inherit;font-size:12px;font-weight:700;background:#fff}
 
-/* drag & drop */
-td.grip{width:26px;cursor:grab;color:#bbb;font-size:15px;text-align:center;user-select:none;padding:9px 4px}
-td.grip:hover{color:var(--navy)}
-tr.dragging{opacity:.35}
-tr.drop-before td{box-shadow:inset 0 3px 0 var(--sky)}
-tr.drop-after td{box-shadow:inset 0 -3px 0 var(--sky)}
 
 /* cell notes — Sheets-style corner triangle; right-click / long-press any cell */
 td[data-colkey]{position:relative}
@@ -100,11 +93,9 @@ td.has-note::after{content:'';position:absolute;top:0;right:0;border-style:solid
 #note-pop{position:fixed;z-index:950;display:none;background:var(--cream);border:2px solid var(--navy);border-radius:10px;padding:12px;width:280px;box-shadow:0 8px 24px rgba(14,62,84,.25)}
 #note-pop.open{display:block}
 #note-pop .np-head{font-weight:800;font-size:12px;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-#note-pop textarea{width:100%;min-height:70px;font-family:inherit;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;resize:vertical;background:#fff}
-#note-pop textarea:focus{outline:none;border-color:var(--sky)}
+#note-pop .np-body{font-size:12px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 10px;white-space:pre-line;max-height:40vh;overflow-y:auto}
 #note-pop .np-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
 #note-pop button{border:none;border-radius:6px;font:inherit;font-weight:700;font-size:12px;padding:6px 12px;cursor:pointer}
-#note-pop .np-save{background:var(--navy);color:#fff}
 #note-pop .np-close{background:#e2ded6;color:#333}
 
 /* long-press action menu (touch devices) */
@@ -129,24 +120,6 @@ td.editable select:focus{outline:none}
 .empty{padding:40px 22px;text-align:center;color:#888;font-weight:700}
 #loading{padding:60px 22px;text-align:center;font-weight:800;color:var(--navy);font-size:16px}
 
-/* ============ MODAL ============ */
-#modal-bg{position:fixed;inset:0;background:rgba(14,62,84,.6);display:none;align-items:flex-start;justify-content:center;z-index:900;overflow-y:auto;padding:40px 14px}
-#modal-bg.open{display:flex}
-.modal{background:var(--cream);border-radius:14px;width:min(640px,100%);padding:26px 26px 22px}
-.modal h2{font-weight:800;font-size:19px;color:var(--navy);margin-bottom:18px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.grid .full{grid-column:1/-1}
-.field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--teal);margin-bottom:4px}
-.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:2px solid var(--line);border-radius:8px;font:inherit;font-size:14px;background:#fff}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sky)}
-.field textarea{resize:vertical;min-height:64px}
-.modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
-.btn-cancel{background:#e2ded6;color:#333}
-.btn-save{background:var(--navy);color:#fff}
-.btn-save:disabled{opacity:.5;cursor:wait}
-#form-msg{font-size:13px;font-weight:700;margin-top:12px;display:none}
-#form-msg.ok{color:#0e7a3d;display:block}
-#form-msg.err{color:var(--red);display:block}
 
 @media (max-width:640px){
   .grid{grid-template-columns:1fr}
@@ -174,7 +147,6 @@ td.editable select:focus{outline:none}
   <span class="sub" id="last-updated"></span>
   <span class="spacer"></span>
   <button class="btn btn-refresh" onclick="loadDeals()">↻ Refresh</button>
-  <button class="btn btn-add" onclick="openModal()">＋ Add Deal</button>
 </header>
 
 <div class="filters">
@@ -201,62 +173,6 @@ td.editable select:focus{outline:none}
   <div id="loading">LOADING DEALS…</div>
   <div id="sections"></div>
 </main>
-
-<!-- ================= ADD DEAL MODAL ================= -->
-<div id="modal-bg">
-  <div class="modal">
-    <h2>Add Deal — lands under "Deals that need to be Sold"</h2>
-    <div class="grid">
-      <div class="field"><label>Status</label>
-        <select id="d-status">
-          <option>MARKET</option><option>EMD</option><option>ASSIGNED</option>
-          <option>NEED PICS</option><option>Price Drop</option><option>1HO</option>
-        </select>
-      </div>
-      <div class="field"><label>Lead Source</label>
-        <select id="d-source">
-          <option>Cold Calling</option><option>Text Blast</option><option>Property Leads</option>
-          <option>DealMate</option><option>Referral</option><option>PPL</option><option>Other</option>
-        </select>
-      </div>
-      <div class="field"><label>Deal Type</label>
-        <select id="d-type"><option>CASH</option><option>NOV</option><option>Other</option></select>
-      </div>
-      <div class="field"><label>Title Company</label>
-        <input id="d-title" list="title-list" placeholder="Innovative Title">
-        <datalist id="title-list">
-          <option>Innovative Title</option><option>National Title Experts</option>
-          <option>Empora Title</option><option>Stellar Title</option><option>Rounsavall Title</option>
-        </datalist>
-      </div>
-      <div class="field"><label>Sr. ACQ</label>
-        <select id="d-sr"><option value=""></option><option>Adam</option><option>Nate</option></select>
-      </div>
-      <div class="field"><label>Jr. ACQ</label>
-        <select id="d-jr"><option value=""></option><option>Davon</option><option>Amanda</option><option>Steven</option></select>
-      </div>
-      <div class="field full"><label>Property Address</label>
-        <input id="d-address" list="addr-list" placeholder="1234 Example St, Cleveland OH 44102" autocomplete="off">
-        <datalist id="addr-list"></datalist>
-      </div>
-      <div class="field full"><label>Seller On Deed</label>
-        <input id="d-seller" placeholder="Seller full name / entity">
-      </div>
-      <div class="field"><label>Lead Date</label><input type="date" id="d-leaddate"></div>
-      <div class="field"><label>Contract Signed</label><input type="date" id="d-contract"></div>
-      <div class="field"><label>COE</label><input type="date" id="d-coe"></div>
-      <div class="field"><label>Price ($)</label><input type="number" id="d-price" placeholder="60000" min="0" step="500"></div>
-      <div class="field full"><label>Notes</label>
-        <textarea id="d-notes" placeholder="Anything the team needs to know"></textarea>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-save" id="save-btn" onclick="saveDeal()">Add Deal</button>
-    </div>
-    <div id="form-msg"></div>
-  </div>
-</div>
 
 <script>
 /* ================================================================
@@ -296,7 +212,6 @@ async function loadDeals(){
     document.getElementById('last-updated').textContent = 'Updated ' + j.updated;
     document.getElementById('loading').style.display='none';
     msg.textContent = '';
-    populateModalFromSheet();
     populateFilters();
     render();
   }catch(err){
@@ -434,7 +349,7 @@ function noteAttrs(d, colKey){
   return (n ? ' has-note' : '') + '" data-colkey="' + colKey + '"' + (n ? ' title="'+esc(n)+'"' : '');
 }
 function td(d, colKey, cls, inner, editable, style){
-  return '<td class="'+cls+(editable?' editable':'')+noteAttrs(d, colKey)+(style?' style="'+style+'"':'')+'>'+inner+'</td>';
+  return '<td class="'+cls+noteAttrs(d, colKey)+(style?' style="'+style+'"':'')+'>'+inner+'</td>';
 }
 
 function render(){
@@ -467,7 +382,6 @@ function render(){
     const rows = deals.map(d=>{
       const cc = d.cellColors || {};
       return '<tr class="'+(d.cancelled?'cancelled':'')+'" data-row="'+d.row+'" data-address="'+esc(d.address)+'">'+
-        '<td class="grip" draggable="true" title="Drag to move row">⠿</td>'+
         cols.map(function(c){
           const bg = cc[c.key];
           const fg = bg ? ((d.cellFonts && d.cellFonts[c.key]) || textOn(bg)) : '';
@@ -480,11 +394,11 @@ function render(){
     host.insertAdjacentHTML('beforeend',
       banner+
       '<div class="table-wrap"><table>'+
-      '<colgroup><col style="width:34px">'+
+      '<colgroup>'+
         cols.map(function(c){ return '<col data-colkey="'+c.key+'" style="width:'+colW(c.key)+'px">'; }).join('')+
       '</colgroup>'+
       '<thead><tr>'+
-        '<th></th>'+cols.map(function(c){
+        cols.map(function(c){
           const numCls = c.cls.indexOf('num') > -1 ? ' class="num"' : '';
           return '<th'+numCls+' data-colkey="'+c.key+'">'+esc(colLabel(c))+'<span class="rz"></span></th>';
         }).join('')+
@@ -565,178 +479,49 @@ document.getElementById('sections').addEventListener('click', function(e){
   }
 });
 
-/* ================= INLINE CELL EDITING ================= */
-const EDIT_TYPES = { LEAD_SOURCE:'text', DEAL_TYPE:'text', SR:'text', JR:'text', SELLER:'text', ADDRESS:'text', ASSIGNEE:'text', TITLE:'text', NOTES1:'textarea', LEAD_DATE:'date', CONTRACT:'date', COE:'date', SOLD:'date', TITLE_REPORT:'text', CLEAR_TITLE:'text', HUD:'text', PRICE:'number', ASSIGNED:'number' };
-function cellValue(deal, colKey){
-  switch(colKey){
-    case 'ADDRESS':  return deal.address;
-    case 'LEAD_SOURCE': return deal.leadSource;
-    case 'DEAL_TYPE':   return deal.dealType;
-    case 'LEAD_DATE':   return mdyToISO(deal.leadDate);
-    case 'SOLD':        return mdyToISO(deal.sold);
-    case 'TITLE_REPORT':return deal.titleReport;
-    case 'CLEAR_TITLE': return deal.clearTitle;
-    case 'HUD':         return deal.hud;
-    case 'SELLER':   return deal.seller;
-    case 'SR':       return deal.sr;
-    case 'JR':       return deal.jr;
-    case 'ASSIGNEE': return deal.assignee;
-    case 'TITLE':    return deal.title;
-    case 'NOTES1':   return deal.notes1;
-    case 'CONTRACT': return mdyToISO(deal.contract);
-    case 'COE':      return mdyToISO(deal.coe);
-    case 'PRICE':    return typeof deal.price === 'number' ? deal.price : '';
-    case 'ASSIGNED': return typeof deal.assigned === 'number' ? deal.assigned : '';
-  }
-  return '';
-}
-
-document.getElementById('sections').addEventListener('click', function(e){
-  const cell = e.target.closest('td.editable');
-  if(!cell || cell.dataset.editing || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  const tr = cell.closest('tr');
-  const deal = findDeal(Number(tr.dataset.row), tr.dataset.address);
-  if(!deal) return;
-
-  const colKey = cell.dataset.colkey;
-  const type = EDIT_TYPES[colKey];
-  const current = cellValue(deal, colKey);
-
-  cell.dataset.editing = '1';
-  const prevHTML = cell.innerHTML;
-  cell.innerHTML = '';
-  let input;
-  const list = type === 'text' ? sheetList(colKey) : null;
-  if(list){
-    input = document.createElement('select');
-    const opts = [''].concat(list);
-    if(current && opts.indexOf(current) === -1) opts.push(current);
-    opts.forEach(function(v){
-      const o = document.createElement('option');
-      o.value = o.textContent = v;
-      if(v === current) o.selected = true;
-      input.appendChild(o);
-    });
-  } else if(type === 'textarea'){
-    input = document.createElement('textarea');
-    input.rows = 4;
-    input.value = current;
-  } else {
-    input = document.createElement('input');
-    input.type = type;
-    if(type === 'number'){ input.min = '0'; input.step = '500'; }
-    input.value = current;
-  }
-  cell.appendChild(input);
-  input.focus();
-  if(type === 'text' && !list) input.select();
-
-  let finished = false;
-  function cancel(){
-    if(finished) return; finished = true;
-    cell.innerHTML = prevHTML; delete cell.dataset.editing;
-  }
-  async function commit(){
-    if(finished) return; finished = true;
-    const raw = input.value.trim();
-    const changed = String(raw) !== String(current);
-    if(!changed){ cell.innerHTML = prevHTML; delete cell.dataset.editing; return; }
-    input.disabled = true;
-    try{
-      const j = await postAction({
-        token: SCRIPT_TOKEN, action: 'updateCell',
-        row: deal.row, address: deal.address,
-        colKey: colKey, value: raw
-      }, 'Saving…', 'Saved ✓');
-      deal.row = j.row;
-      if(colKey === 'ADDRESS') deal.address = raw;
-      if(colKey === 'LEAD_SOURCE') deal.leadSource = raw;
-      if(colKey === 'DEAL_TYPE') deal.dealType = raw;
-      if(colKey === 'LEAD_DATE') deal.leadDate = isoToMDY(raw);
-      if(colKey === 'SOLD') deal.sold = isoToMDY(raw);
-      if(colKey === 'TITLE_REPORT') deal.titleReport = raw;
-      if(colKey === 'CLEAR_TITLE') deal.clearTitle = raw;
-      if(colKey === 'HUD') deal.hud = raw;
-      if(colKey === 'SELLER') deal.seller = raw;
-      if(colKey === 'SR') deal.sr = raw;
-      if(colKey === 'JR') deal.jr = raw;
-      if(colKey === 'ASSIGNEE') deal.assignee = raw;
-      if(colKey === 'TITLE') deal.title = raw;
-      if(colKey === 'NOTES1') deal.notes1 = raw;
-      if(colKey === 'CONTRACT') deal.contract = isoToMDY(raw);
-      if(colKey === 'COE') deal.coe = isoToMDY(raw);
-      if(colKey === 'PRICE') deal.price = raw === '' ? '' : Number(raw);
-      if(colKey === 'ASSIGNED') deal.assigned = raw === '' ? '' : Number(raw);
-      render();
-    }catch(err){
-      document.getElementById('status-msg').textContent = 'Save failed: ' + err.message;
-      cell.innerHTML = prevHTML; delete cell.dataset.editing;
-    }
-  }
-  input.addEventListener('keydown', function(ev){
-    if(ev.key === 'Enter'){
-      if(type === 'textarea'){
-        if(ev.metaKey || ev.ctrlKey) commit(); // plain Enter = newline in notes
-      } else {
-        commit();
-      }
-    }
-    if(ev.key === 'Escape') cancel();
-  });
-  input.addEventListener('blur', commit);
-  if(list) input.addEventListener('change', commit);
-});
-
-/* ================= CELL NOTES (right-click / long-press) ================= */
+/* ================= CELL NOTES (view only — editing happens on the sheet) ================= */
 document.body.insertAdjacentHTML('beforeend',
   '<div id="note-pop"><div class="np-head">Note</div>'+
-  '<textarea placeholder="Type a note…"></textarea>'+
-  '<div class="np-actions"><button class="np-close">Close</button><button class="np-save">Save</button></div></div>');
-
+  '<div class="np-body"></div>'+
+  '<div class="np-actions"><button class="np-close">Close</button></div></div>');
 const notePop = document.getElementById('note-pop');
-let noteCtx = null; // { deal, colKey }
-
 function openNotePop(cell, x, y){
   const tr = cell.closest('tr');
   const deal = findDeal(Number(tr.dataset.row), tr.dataset.address);
   if(!deal) return;
-  const colKey = cell.dataset.colkey;
-  noteCtx = { deal: deal, colKey: colKey };
-  notePop.querySelector('textarea').value = (deal.cellNotes && deal.cellNotes[colKey]) || '';
+  const note = (deal.cellNotes && deal.cellNotes[cell.dataset.colkey]) || '';
+  if(!note) return;
+  notePop.querySelector('.np-body').textContent = note;
   notePop.classList.add('open');
-  const w = 280, h = 170;
-  notePop.style.left = Math.min(x, window.innerWidth - w - 10) + 'px';
-  notePop.style.top  = Math.min(y, window.innerHeight - h - 10) + 'px';
-  notePop.querySelector('textarea').focus();
+  notePop.style.left = Math.min(x, window.innerWidth - 290) + 'px';
+  notePop.style.top  = Math.min(y, window.innerHeight - 180) + 'px';
 }
-function closeNotePop(){ notePop.classList.remove('open'); noteCtx = null; }
+function closeNotePop(){ notePop.classList.remove('open'); }
+notePop.querySelector('.np-close').addEventListener('click', closeNotePop);
 
 document.getElementById('sections').addEventListener('contextmenu', function(e){
-  const cell = e.target.closest('td[data-colkey]');
+  const cell = e.target.closest('td.has-note');
   if(!cell) return;
   e.preventDefault();
   openNotePop(cell, e.clientX, e.clientY);
 });
 
-// long-press for touch devices → Copy / Note menu
+// mobile: long-press a noted cell to view its note; other cells offer Copy
 document.body.insertAdjacentHTML('beforeend',
-  '<div id="cell-menu"><button class="cm-copy">Copy</button><button class="cm-note">Note</button></div>');
+  '<div id="cell-menu"><button class="cm-copy">Copy</button></div>');
 const cellMenu = document.getElementById('cell-menu');
-let menuCtx = null; // { cell, x, y }
-
+let menuCtx = null;
 function openCellMenu(cell, x, y){
-  menuCtx = { cell: cell, x: x, y: y };
+  menuCtx = { cell: cell };
   cellMenu.classList.add('open');
-  cellMenu.style.left = Math.min(x, window.innerWidth - 160) + 'px';
+  cellMenu.style.left = Math.min(x, window.innerWidth - 120) + 'px';
   cellMenu.style.top  = Math.min(y, window.innerHeight - 60) + 'px';
 }
-function closeCellMenu(){ cellMenu.classList.remove('open'); }
-
+function closeCellMenu(){ cellMenu.classList.remove('open'); menuCtx = null; }
 cellMenu.querySelector('.cm-copy').addEventListener('click', async function(){
   if(!menuCtx) return;
-  const text = menuCtx.cell.innerText.trim();
   try{
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(menuCtx.cell.innerText.trim());
     document.getElementById('status-msg').textContent = 'Copied ✓';
   }catch(err){
     document.getElementById('status-msg').textContent = 'Copy failed';
@@ -744,20 +529,12 @@ cellMenu.querySelector('.cm-copy').addEventListener('click', async function(){
   setTimeout(function(){ document.getElementById('status-msg').textContent = ''; }, 2000);
   closeCellMenu();
 });
-cellMenu.querySelector('.cm-note').addEventListener('click', function(){
-  if(!menuCtx) return;
-  const c = menuCtx;
-  closeCellMenu();
-  openNotePop(c.cell, c.x, c.y);
-});
-
 let lpTimer = null;
 document.getElementById('sections').addEventListener('touchstart', function(e){
   const cell = e.target.closest('td[data-colkey]');
   if(!cell) return;
   const t = e.touches[0];
   lpTimer = setTimeout(function(){
-    // cell has a note → show it immediately; otherwise offer Copy / Note
     if(cell.classList.contains('has-note')) openNotePop(cell, t.clientX, t.clientY);
     else openCellMenu(cell, t.clientX, t.clientY);
   }, 500);
@@ -765,37 +542,13 @@ document.getElementById('sections').addEventListener('touchstart', function(e){
 ['touchend','touchmove','touchcancel'].forEach(function(ev){
   document.getElementById('sections').addEventListener(ev, function(){ clearTimeout(lpTimer); }, {passive:true});
 });
+document.addEventListener('click', function(e){
+  if(notePop.classList.contains('open') && !notePop.contains(e.target)) closeNotePop();
+  if(cellMenu.classList.contains('open') && !cellMenu.contains(e.target)) closeCellMenu();
+});
 document.addEventListener('touchstart', function(e){
   if(cellMenu.classList.contains('open') && !cellMenu.contains(e.target)) closeCellMenu();
 }, {passive:true});
-
-notePop.querySelector('.np-close').addEventListener('click', closeNotePop);
-notePop.querySelector('.np-save').addEventListener('click', async function(){
-  if(!noteCtx) return;
-  const note = notePop.querySelector('textarea').value.trim();
-  const btn = notePop.querySelector('.np-save');
-  btn.disabled = true; btn.textContent = 'Saving…';
-  try{
-    const j = await postAction({
-      token: SCRIPT_TOKEN, action: 'updateNote',
-      row: noteCtx.deal.row, address: noteCtx.deal.address,
-      colKey: noteCtx.colKey, note: note
-    }, 'Saving note…', 'Note saved ✓');
-    noteCtx.deal.row = j.row;
-    if(!noteCtx.deal.cellNotes) noteCtx.deal.cellNotes = {};
-    if(note) noteCtx.deal.cellNotes[noteCtx.colKey] = note;
-    else delete noteCtx.deal.cellNotes[noteCtx.colKey];
-    closeNotePop();
-    render();
-  }catch(err){
-    document.getElementById('status-msg').textContent = 'Note save failed: ' + err.message;
-  }finally{
-    btn.disabled = false; btn.textContent = 'Save';
-  }
-});
-document.addEventListener('click', function(e){
-  if(notePop.classList.contains('open') && !notePop.contains(e.target)) closeNotePop();
-});
 
 /* ================= INLINE STATUS EDIT ================= */
 const STATUS_OPTIONS = ['MARKET','EMD','ASSIGNED','NEED PICS','Price Drop','1HO','CTC','CLOSED','CANCEL'];
@@ -806,28 +559,6 @@ function statusList(){
 function sheetList(colKey){
   return (DATA && DATA.dropdowns && DATA.dropdowns[colKey] && DATA.dropdowns[colKey].length)
     ? DATA.dropdowns[colKey] : null;
-}
-
-/* populate the Add Deal modal selects from the sheet's validation lists */
-function fillSelect(id, list, keepBlank){
-  if(!list) return;
-  const sel = document.getElementById(id);
-  const prev = sel.value;
-  sel.innerHTML = (keepBlank ? '<option value=""></option>' : '') +
-    list.map(function(v){ return '<option>'+esc(v)+'</option>'; }).join('');
-  if(list.indexOf(prev) > -1 || (keepBlank && prev === '')) sel.value = prev;
-}
-function populateModalFromSheet(){
-  if(!DATA || !DATA.dropdowns) return;
-  fillSelect('d-status', DATA.dropdowns.STATUS, false);
-  fillSelect('d-source', DATA.dropdowns.LEAD_SOURCE, false);
-  fillSelect('d-type',   DATA.dropdowns.DEAL_TYPE, false);
-  fillSelect('d-sr',     DATA.dropdowns.SR, true);
-  fillSelect('d-jr',     DATA.dropdowns.JR, true);
-  if(DATA.dropdowns.TITLE){
-    document.getElementById('title-list').innerHTML =
-      DATA.dropdowns.TITLE.map(function(v){ return '<option>'+esc(v)+'</option>'; }).join('');
-  }
 }
 
 /* filters: statuses from the sheet's validation list, sections from the sheet's
@@ -910,175 +641,6 @@ document.getElementById('sections').addEventListener('click', function(e){
       delete chip.dataset.editing;
     }
   });
-});
-
-/* ================= DRAG TO MOVE ROWS ================= */
-let dragInfo = null;
-const sectionsHost = document.getElementById('sections');
-
-sectionsHost.addEventListener('dragstart', function(e){
-  const grip = e.target.closest('td.grip');
-  if(!grip){ e.preventDefault(); return; }
-  const tr = grip.closest('tr');
-  dragInfo = { row: Number(tr.dataset.row), address: tr.dataset.address };
-  tr.classList.add('dragging');
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', tr.dataset.address); // required for Firefox
-});
-
-sectionsHost.addEventListener('dragend', function(){
-  dragInfo = null;
-  clearDropMarks();
-});
-
-function clearDropMarks(){
-  sectionsHost.querySelectorAll('.drop-before,.drop-after,.dragging').forEach(function(el){
-    el.classList.remove('drop-before','drop-after','dragging');
-  });
-}
-
-sectionsHost.addEventListener('dragover', function(e){
-  if(!dragInfo) return;
-  const tr = e.target.closest('tr[data-row]');
-  if(!tr) return;
-  e.preventDefault(); // allow drop
-  e.dataTransfer.dropEffect = 'move';
-  const rect = tr.getBoundingClientRect();
-  const before = (e.clientY - rect.top) < rect.height / 2;
-  sectionsHost.querySelectorAll('.drop-before,.drop-after').forEach(function(el){
-    if(el !== tr) el.classList.remove('drop-before','drop-after');
-  });
-  tr.classList.toggle('drop-before', before);
-  tr.classList.toggle('drop-after', !before);
-});
-
-sectionsHost.addEventListener('drop', async function(e){
-  if(!dragInfo) return;
-  const tr = e.target.closest('tr[data-row]');
-  if(!tr) return;
-  e.preventDefault();
-
-  const rect = tr.getBoundingClientRect();
-  const position = (e.clientY - rect.top) < rect.height / 2 ? 'before' : 'after';
-  const payload = {
-    token: SCRIPT_TOKEN, action: 'moveRow',
-    row: dragInfo.row, address: dragInfo.address,
-    targetRow: Number(tr.dataset.row), targetAddress: tr.dataset.address,
-    position: position
-  };
-  dragInfo = null;
-  clearDropMarks();
-
-  if(payload.row === payload.targetRow) return;
-
-  const msg = document.getElementById('status-msg');
-  msg.textContent = 'Moving row…';
-  try{
-    const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(payload) });
-    const j = await res.json();
-    if(j.error) throw new Error(j.error);
-    msg.textContent = 'Row moved ✓';
-    setTimeout(function(){ msg.textContent = ''; }, 2500);
-    loadDeals(); // row numbers shift after a move — always re-pull
-  }catch(err){
-    msg.textContent = 'Move failed: ' + err.message;
-  }
-});
-
-/* ================= ADD DEAL ================= */
-function applyDefault(id, re){
-  const sel = document.getElementById(id);
-  for(let i = 0; i < sel.options.length; i++){
-    if(re.test(sel.options[i].value)){ sel.value = sel.options[i].value; return; }
-  }
-}
-function openModal(){
-  document.getElementById('modal-bg').classList.add('open');
-  document.getElementById('form-msg').className='';
-  const today = new Date().toISOString().slice(0,10);
-  if(!document.getElementById('d-contract').value) document.getElementById('d-contract').value = today;
-  // standard defaults — change per deal if needed
-  applyDefault('d-status', /need\s*pics/i);
-  applyDefault('d-source', /cold\s*call/i);
-  applyDefault('d-type', /^cash$/i);
-  const t = document.getElementById('d-title');
-  if(!t.value) t.value = 'Innovative Title';
-}
-function closeModal(){ document.getElementById('modal-bg').classList.remove('open'); }
-document.getElementById('modal-bg').addEventListener('click', e=>{ if(e.target.id==='modal-bg') closeModal(); });
-
-function fmtUS(iso){ // yyyy-mm-dd → m/d/yy for the sheet
-  if(!iso) return '';
-  const [y,m,d] = iso.split('-');
-  return parseInt(m)+'/'+parseInt(d)+'/'+y.slice(2);
-}
-
-async function saveDeal(){
-  const address = document.getElementById('d-address').value.trim();
-  const msg = document.getElementById('form-msg');
-  if(!address){ msg.textContent='Property address is required.'; msg.className='err'; return; }
-
-  const btn = document.getElementById('save-btn');
-  btn.disabled = true; msg.textContent='Saving…'; msg.className='ok';
-
-  const payload = {
-    token: SCRIPT_TOKEN,
-    status: document.getElementById('d-status').value,
-    leadSource: document.getElementById('d-source').value,
-    dealType: document.getElementById('d-type').value,
-    sr: document.getElementById('d-sr').value,
-    jr: document.getElementById('d-jr').value,
-    seller: document.getElementById('d-seller').value.trim(),
-    address: address,
-    title: document.getElementById('d-title').value.trim(),
-    notes: document.getElementById('d-notes').value.trim(),
-    leadDate: fmtUS(document.getElementById('d-leaddate').value),
-    contract: fmtUS(document.getElementById('d-contract').value),
-    coe: fmtUS(document.getElementById('d-coe').value),
-    price: document.getElementById('d-price').value
-  };
-
-  try{
-    const res = await fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify(payload) });
-    const j = await res.json();
-    if(j.error) throw new Error(j.error);
-    msg.textContent = 'Deal added — row ' + j.row + '. Refreshing…';
-    ['d-address','d-seller','d-notes','d-price','d-leaddate','d-coe','d-title'].forEach(id=>document.getElementById(id).value='');
-    setTimeout(()=>{ closeModal(); loadDeals(); }, 900);
-  }catch(err){
-    msg.textContent = 'Save failed: ' + err.message;
-    msg.className='err';
-  }finally{
-    btn.disabled = false;
-  }
-}
-
-/* ================= ADDRESS AUTOCOMPLETE (Add Deal) ================= */
-const US_STATES = {'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA','Colorado':'CO','Connecticut':'CT','Delaware':'DE','Florida':'FL','Georgia':'GA','Hawaii':'HI','Idaho':'ID','Illinois':'IL','Indiana':'IN','Iowa':'IA','Kansas':'KS','Kentucky':'KY','Louisiana':'LA','Maine':'ME','Maryland':'MD','Massachusetts':'MA','Michigan':'MI','Minnesota':'MN','Mississippi':'MS','Missouri':'MO','Montana':'MT','Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ','New Mexico':'NM','New York':'NY','North Carolina':'NC','North Dakota':'ND','Ohio':'OH','Oklahoma':'OK','Oregon':'OR','Pennsylvania':'PA','Rhode Island':'RI','South Carolina':'SC','South Dakota':'SD','Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT','Virginia':'VA','Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY','District of Columbia':'DC'};
-let addrTimer = null;
-document.getElementById('d-address').addEventListener('input', function(){
-  const q = this.value.trim();
-  clearTimeout(addrTimer);
-  if(q.length < 4) return;
-  addrTimer = setTimeout(async function(){
-    try{
-      const res = await fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=6&lang=en');
-      const j = await res.json();
-      const opts = (j.features || [])
-        .filter(function(f){ return f.properties && f.properties.countrycode === 'US'; })
-        .map(function(f){
-          const p = f.properties;
-          const street = ((p.housenumber ? p.housenumber+' ' : '') + (p.street || p.name || '')).trim();
-          const city = p.city || p.town || p.village || p.county || '';
-          const state = US_STATES[p.state] || p.state || '';
-          const tail = (state + (p.postcode ? ' ' + p.postcode : '')).trim();
-          return [street, city, tail].filter(Boolean).join(', ');
-        })
-        .filter(function(v, i, a){ return v && a.indexOf(v) === i; });
-      document.getElementById('addr-list').innerHTML =
-        opts.map(function(o){ return '<option>'+esc(o)+'</option>'; }).join('');
-    }catch(e){ /* suggestions are best-effort; typing manually always works */ }
-  }, 300);
 });
 
 /* ================= BOOT ================= */

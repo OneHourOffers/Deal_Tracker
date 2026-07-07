@@ -756,7 +756,11 @@ document.getElementById('sections').addEventListener('touchstart', function(e){
   const cell = e.target.closest('td[data-colkey]');
   if(!cell) return;
   const t = e.touches[0];
-  lpTimer = setTimeout(function(){ openCellMenu(cell, t.clientX, t.clientY); }, 500);
+  lpTimer = setTimeout(function(){
+    // cell has a note → show it immediately; otherwise offer Copy / Note
+    if(cell.classList.contains('has-note')) openNotePop(cell, t.clientX, t.clientY);
+    else openCellMenu(cell, t.clientX, t.clientY);
+  }, 500);
 }, {passive:true});
 ['touchend','touchmove','touchcancel'].forEach(function(ev){
   document.getElementById('sections').addEventListener(ev, function(){ clearTimeout(lpTimer); }, {passive:true});
